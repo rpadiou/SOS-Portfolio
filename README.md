@@ -107,6 +107,17 @@ python main.py --mode sparse --n-assets 15 --n-clusters 3 --delta-robust 0.02
 python -m pytest tests/ -v
 ```
 
+Note: the tests import the `src` package directly. To run the tests locally either set the project root on `PYTHONPATH` or install the package in editable mode:
+
+```bash
+# Option 1: run tests without installing
+PYTHONPATH=. python -m pytest tests/ -v
+
+# Option 2: install editable and run tests
+pip install -e .
+python -m pytest tests/ -v
+```
+
 Solver options: `SCS` (default, open-source), `CLARABEL` (recommended for n>10), `MOSEK` (commercial, fastest).
 
 ---
