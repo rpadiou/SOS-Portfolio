@@ -67,7 +67,7 @@ trustworthy with it.
 ## Certificates and the rank rule
 
 The primary certificate is a posteriori: a feasible `x_hat` with
-`f(x_hat) - lambda_d <= eps`. It is rigorous whatever the numerical rank of the
+`f(x_hat) - lambda_d <= eps`. It holds whatever the numerical rank of the
 moment matrix. Candidates come from the extraction and from the first-order
 moments, and are polished by a local solve (extraction from a solver-accuracy
 moment matrix is accurate to ~1e-5 only). The local best is not a candidate: the
@@ -93,7 +93,7 @@ portfolio return (that is a dense tensor contraction `sum kappa_ijkl x_i x_j x_k
 and the markets are synthetic. The sparsity is a modelling choice (cross terms only
 within sectors), not a property of data. Results describe this polynomial family.
 
-## Robust extension
+## Ball extension
 
 The ball is on the coefficients of the modelled kurtosis monomials (`||Delta kappa||_F <= delta`), so
 `max_{Delta} <Delta, z(x)> = delta ||W z(x)||_2`, `z` = monomials `x_i^4`, `x_i^2 x_j^2`,
