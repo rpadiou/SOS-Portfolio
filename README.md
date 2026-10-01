@@ -56,6 +56,7 @@ python scripts/make_paper_numbers.py && python paper/generate_figures.py && (cd 
 ```
 
 Experiment C needs `data/raw/prices.parquet`, which is not versioned; `data/manifest.json` records the file used (tickers, dates, SHA-256).
+A new download can give a different hash if Yahoo has revised the adjusted prices.
 Experiment C takes about two hours on six workers.
 
 ## Layout
@@ -75,4 +76,4 @@ tests/               unit, regression and slow soundness tests
 Lasserre, SIAM J. Optim. 11(3), 2001. Waki, Kim, Kojima, Muramatsu, SIAM J. Optim. 17(1), 2006.
 Lasserre, SIAM J. Optim. 17(3), 2006. Henrion, Lasserre, in Positive Polynomials in Control, 2005. Full list in the paper.
 
-<!-- TODO(author): decide whether to add a line about AI assistance and the audit of version 1. -->
+Parts of the code and the text were written with an AI assistant. I reviewed the results, ran an audit of the claims, and corrected the errors it found (see docs/CLAIMS.md and Appendix A of the paper).
