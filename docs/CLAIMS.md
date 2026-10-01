@@ -36,3 +36,13 @@ reproduced exactly (see `results/review_findings_v1.json`).
 
 Experiment B is a negative result for the robust extension (see also E8b): it is
 reported as found, per the reading rule of the protocol.
+
+| ID | Claim tested | Protocol | Proof script | Result file | Status |
+|----|--------------|----------|--------------|-------------|--------|
+| X-C1 | On real data the globally certified minimiser differs from the multi-start local one | `experiments/PROTOCOL_C.md` | `experiments/exp_c_real_data.py`, `experiments/summarize_exp_c.py` | `results/exp_c_summary.md` | U10 (dense): refuted, SOS and local coincide on all 132 rebalances. U37 (sector cliques): local is suboptimal (> 1e-4 relative) on 14%, 6% and 4% of dates for w4 = 0, 1, 3 (max relative excess 3.0, 3.4, 0.28). Every SOS solve is certified (a posteriori gap about -1e-6 to -3e-7, i.e. solver tolerance) |
+| X-C2 | The SOS minimiser has out-of-sample value over simple baselines | same | same | same | not supported: on U10 (w4 = 1) volatility is 1.0 pt below 1/N (95% CI [-1.96, -0.14]) but 0.7 pt above Ledoit-Wolf min-variance (CI [0.25, 1.20]); net return differences have intervals containing 0; Sharpe p-values 0.32 to 0.98. On U37 the sector model has volatility 1.8 pt below 1/N and an interval containing 0 against min-variance. No multiple-comparison correction |
+| X-C3 | Certified global beats local out of sample | same | same | same | not supported: U37 sector, w4 = 1, SOS has slightly higher volatility than local (+0.19 pt, CI [0.06, 0.41]); no difference in CVaR or net return |
+| X-C4 | Price of sparsity (sector model versus full co-moment model) | same | same | same | measured: the full-model objective at the sector-SOS solution is 0.32, 0.42, 0.55 (w4 = 0, 1, 3) versus 0.09, 0.22, 0.34 at the full-model local solution, and worse on 98 to 100% of dates; out-of-sample volatility and CVaR are close |
+| X-C5 | `frac_lb_le_obj` below 1 (0.21 on U10, w4 = 0) | same | same | `results/exp_c_model.csv` | unexplained, not investigated: median certificate gap is -2e-6, so the bound exceeds the objective by about the solver tolerance; to be checked before the number is quoted |
+
+Caveats of experiment C: survivorship bias, 37 fixed US large caps, no shorting, 5 and 10 bp costs only, 13 comparisons listed without correction. Extractor cap added before the evaluation run (protocol amendment 3).
