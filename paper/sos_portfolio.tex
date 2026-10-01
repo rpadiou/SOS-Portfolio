@@ -304,9 +304,17 @@ They do not show that the ball formulation fails for other uncertainty models, o
 They do not show anything about markets beyond 37 fixed US stocks over one period.
 The extrapolated dense costs at $n=30$ and $n=50$ are not measurements.
 
+The bound-accuracy test covers validity and tightness at the $10^{-8}$ level on small non-convex instances with two or three assets.
+It does not cover four assets or more, sparse relaxations with several cliques and auxiliary budget variables, or the real-data polynomials.
+For those I rely on the re-solve sample of Appendix~\ref{app:acc}, which has no independent optimum, so a bias common to all solvers would go undetected.
+
 Explanations I tested: the budget decoupling (fixed and confirmed by the regression test), and the solver accuracy behind the bound excess (Appendix~\ref{app:acc}).
 Explanations I did not test: why local minima multiply with $n$, why shrinkage beats the ball in Experiment~B, and why the global minimiser does not transfer out of sample.
 The synthetic polynomial has no return term and a simplified kurtosis structure, so Experiments~A and~B describe this family only.
+
+\medskip\noindent\emph{Note on tools.}
+Parts of the code and the text were written with an AI assistant.
+I reviewed the results, ran an audit of the claims, and corrected the errors it found (Appendix~\ref{app:v1} and \texttt{docs/CLAIMS.md}).
 
 \bibliographystyle{plain}
 \bibliography{refs}
@@ -343,10 +351,35 @@ Where the solver converges (no weight on the fourth moment, and the 2020 windows
 Where it stalls with an inaccurate status (most cases with $w_4\ge1$) the median ratio of the two excesses is 1.00, and the excess stays between $10^{-7}$ and $1.5\times10^{-6}$ in most cases.
 The largest excess at tolerance $10^{-9}$ is \xTightMax{} and none is negative.
 The polynomial is the same on both sides (checked to nine digits) and the retained points are feasible (largest violation $4\times10^{-16}$).
-I conclude that the excess is a precision floor of the solver, not a flaw in the relaxation.
-A bias below about $10^{-6}$ in relative terms cannot be excluded.
-A test (\texttt{tests/test\_bound\_soundness.py}) checks that the bound stays below $f$ at 2000 random feasible points, at the local solution and at the extracted points, with a tolerance of $5\times10^{-6}$.
-It would not detect an invalid bound below that tolerance.
+The reported value is the primal objective of the moment problem; the guaranteed bound would be the dual objective, which I did not extract.
+On a two-asset instance with a known optimum the excess is $3.2\times10^{-9}$ and the solver residuals are about $10^{-9}$, at tolerance $10^{-7}$ and $10^{-10}$ alike.
+I conclude that the excess is a precision floor of the solver, consistent with an unfinished solve, and not a flaw in the relaxation.
+
+\paragraph{Sensitivity of the results.}
+I re-solved a fixed sample of \spCases{} cases (seed 2026) with CLARABEL at $10^{-10}$ and SCS at $10^{-8}$ (Table~\ref{tab:F}).
+The sample includes inaccurate statuses, uncertified instances and the tightest certificate gaps of each experiment.
+Across the \spRuns{} re-solves, \spFlips{} certification verdicts change and \spFlagCh{} failure flags of Experiment~A change.
+The SOS allocations of Experiment~C move by at most \spMaxW{}.
+\input{tab_F.tex}
+
+With CLARABEL, the bound itself changes by up to \spACl{} (A), \spBCl{} (B) and \spCCl{} (C, the 2020 windows of U37).
+SCS differs by up to \spAScs{} on the 4-asset instances of A, where it also reports an inaccurate status.
+Its flatness decisions differ from CLARABEL's in \spFlatFlips{} of \spFlatN{} cases of C, so I do not use it for rank decisions.
+The \spDdN{} instances where the sparse bound is more than $10^{-3}$ below the dense one stay so with CLARABEL at $10^{-10}$.
+The difference lies between \spDdMin{} and \spDdMax{} and changes by at most \spDdChange{}, so the weaker sparse bound is not a solver artefact.
+
+I treat a change as harmless when it cannot alter a verdict or a figure of the paper.
+Verdicts use a relative tolerance of $10^{-4}$.
+The quantities that carry conclusions (verdicts, failure flags, allocations, dense-minus-sparse differences) change by at most \spConcl{} or not at all.
+The bound values change by more than that on some cases, up to \spCCl{}, without altering any verdict.
+I therefore did not rerun Experiments~A, B and~C.
+
+\paragraph{Independent optimum.}
+A test (\texttt{tests/test\_bound\_soundness.py}) compares the bound with a minimum computed without the SDP on \smN{} instances with two or three assets, by a fine grid followed by local refinement.
+It also checks that the bound stays below $f$ at 2000 random feasible points, at the local solution and at the extracted points.
+At tolerance $10^{-10}$ the difference between the bound and the independent minimum lies between \smMin{} and \smMax{}.
+A tolerance of $10^{-9}$ cannot be enforced because the solver stalls with residuals of that order.
+The test therefore allows $+10^{-8}$ (bound above the optimum) and $-5\times10^{-8}$ (bound far below it).
 
 \section{Experiment C: all comparisons}\label{app:tests}
 \input{tab_E.tex}
