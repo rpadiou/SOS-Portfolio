@@ -1,125 +1,78 @@
 # SOS-Portfolio
 
-**Global Portfolio Optimization via Sparse & Distributionally Robust Lasserre SOS Hierarchy**
+Global optimisation of a degree-4 portfolio risk polynomial with the Lasserre moment-SOS hierarchy,
+dense and with correlative sparsity, and an empirical check of what the resulting certificate is worth.
+The write-up is in [paper/sos_portfolio.pdf](paper/sos_portfolio.pdf).
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-51%2F51%20passing-brightgreen)]()
-[![Methods](https://img.shields.io/badge/Methods-Sparse%20SOS%20%7C%20DR--SDP%20%7C%20Chordal%20Sparsity-red)]()
+## What it is
 
-Portfolio risk encoded as a degree-4 polynomial (variance + skewness + kurtosis + Almgren–Chriss impact) and solved **globally** using the Lasserre SOS hierarchy. At hierarchy order d=2, the Curto–Fialkow flat extension condition certifies the unique global minimizer — a guarantee inaccessible to gradient-based methods.
+- Order-2 relaxation of `min f(x)` on `{x >= 0, b_lo <= sum x <= b_hi}`, dense and sparse (cliques of the interaction graph).
+- An a posteriori certificate: a feasible point whose value is within a tolerance of the lower bound.
+- A multi-start local solver, for comparison.
+- Three experiments: A (local search against the relaxation, synthetic), B (estimation error on kurtosis coefficients),
+  C (37 US stocks, walk-forward, 2015-2025).
 
-Scales to **n=50+ assets** via correlative sparsity (Waki–Kim–Kojima–Muramatsu 2006): chordal extension of the correlation graph decomposes the single exponential-size SDP into small per-clique blocks, achieving a **398×** reduction in scalar variables for n=50.
+## What it is not
 
-> **Companion paper (methodology, proofs, numerical results):**
-> **[paper/sos_portfolio.pdf](paper/sos_portfolio.pdf)**
-
----
-
-> **Note — showcase repository.**
-> This project is the result of several months of personal work at the intersection of two interests: computational algebra, studied as part of my coursework at [Télécom Paris](https://www.telecom-paris.fr/), and quantitative finance. The goal was to take the theoretical machinery of the Lasserre SOS hierarchy all the way to a working, tested implementation — and to understand, from first principles, what a *certified* global optimum actually means.
-
----
-
-## Motivation
-
-Markowitz mean-variance optimization assumes Gaussian returns and solves a convex quadratic program. Real equity returns are fat-tailed (excess kurtosis ≈ 8–10), negatively skewed, and subject to non-linear market impact — all of which are exactly polynomial, but degree-4 polynomials are non-convex.
-
-Gradient-based methods (L-BFGS-B, SLSQP) find local minima but provide **no mathematical certificate** of global optimality. For an institutional portfolio manager, this is insufficient: a committee of risk or a regulator requires a traceable proof that the found allocation is globally optimal, not merely locally optimal.
-
-The SOS hierarchy provides this certificate via the flat extension condition: when rank(M₂) = rank(M₁) = 1, the solution is provably the unique global minimizer. This is achieved in 0.11 s on the 2-asset problem and scales to n=50 assets via chordal sparsity.
-
----
+- Not a trading strategy and not a calibrated risk model. The synthetic markets are uncalibrated.
+- Not evidence that the hierarchy beats other portfolio methods: experiment C finds no out-of-sample gain over risk-based baselines.
 
 ## Results
 
-### 2-asset problem: dense hierarchy (exact, certified)
+Generated from `results/` by `scripts/make_readme_tables.py`. Details, intervals and caveats are in the paper.
 
-| Order d | Matrix size | Lower bound λ_d | Gap to f* | Time |
-|:---:|:---:|:---:|:---:|:---:|
-| 1 | 3×3 | 0.016988 | 0.170383 | 0.05 s |
-| **2** | **6×6** | **0.187371** | **< 10⁻⁶** | **0.11 s** |
-| 3 | 10×10 | 0.187371 | < 10⁻⁶ | 0.31 s |
+<!-- BEGIN:headline -->
+| experiment | measured | result |
+|---|---|---|
+| A, 1760 synthetic instances | one local start misses the global minimum | 45% (best of 100 starts: 0.5%) |
+| A | order-2 relaxation certifies the optimum | 98.4% (default regime, n=50: 74%) |
+| A | sparse SDP against 100 local runs, n=50, default regime | 80 s against 33 s |
+| size, n=50 | dense over sparse PSD entries (v1 claimed 398) | 128 to 215 |
+| B, kurtosis estimation error | ball formulation against nominal, 10 assets | worse for rho <= 0.2, 2 to 5% better at rho = 0.5 (gamma <= 0.1) |
+| B | shrinkage at rho = 0.5, regret over nominal | 0.21 |
+| C, 37 US stocks, 2015-2025 | local solver suboptimal on sector model (w4 = 0, 1, 3) | 14%, 6%, 4% of dates |
+| C | net-return intervals containing 0 | 13 of 13 comparisons |
+<!-- END:headline -->
 
-At d=2: rank(M₂) = rank(M₁) = 1 → **flat extension certified**.
-Unique global minimizer: **x₁* = 0.6058, x₂* = 0.3442**, f* = 0.187371.
+## Known limits
 
-### Sparse SOS: n=15 assets (3 cliques × 5 assets)
+- Dense costs beyond n = 15 are extrapolated, not measured.
+- The SDP bound is only as accurate as the solver; it can exceed the objective at the optimum by about 1e-6 relative (paper, appendix B).
+- Experiment B uses drawn estimation errors on synthetic markets. Experiment C uses a fixed universe of current large caps (survivorship bias).
+- The 13 comparisons of experiment C are not corrected for multiple testing.
+- Version 1 (tag `v1.0-paper`) had errors; they are listed in `docs/CLAIMS.md` and in the paper.
 
-| Method | Bound | SDP variables | Time |
-|:--|:---:|:---:|:---:|
-| Dense d=2 (theoretical) | f* | 18,496 scalar | > 60 s |
-| **Sparse d=2 (implemented)** | **f*** | **376 scalar** | **< 1 s** |
-
-Certified gap: lb ≤ f* ≤ ub, flat extension per clique. 51/51 unit tests pass.
-
-### Complexity reduction: sparse vs dense for n=50
-
-| Configuration | SDP scalar variables | Reduction |
-|:--|:---:|:---:|
-| Dense n=50, d=2 | 1,326² = 1,758,276 | 1× |
-| Sparse n=50, 10 cliques of 5 | 10 × 21² = 4,410 | **398×** |
-
----
-
-## Architecture
-
-```
-SOS-Portfolio/
-├── src/
-│   ├── polynomial_ring.py      # R[x₁,...,xₙ]: sparse coeff dict, graded-lex monomial enum
-│   ├── portfolio_problem.py    # Degree-4 objective + semialgebraic constraints
-│   ├── graph_sparsity.py       # ChordalExtension: MDO → PEO → maximal cliques → RIP
-│   ├── indexer.py              # SparseIndexer: bijection local↔global moment indices
-│   ├── sos_hierarchy.py        # SparseLasserreRelaxation + LasserreRelaxation (dense)
-│   ├── extractor.py            # MinimizerExtractor: Curto-Fialkow + Henrion-Lasserre
-│   ├── local_solver.py         # L-BFGS-B + SLSQP for arbitrary n
-│   └── visualization.py        # 3D surface, convergence, moment spectra
-├── paper/
-│   ├── sos_portfolio.tex       # Companion paper (LaTeX source)
-│   └── sos_portfolio.pdf       # Compiled paper
-├── tests/
-│   └── test_sparse_sos.py      # 51 unit tests across 9 test classes
-├── main.py                     # CLI: --mode sparse|demo --n-assets --n-clusters --delta-robust
-└── requirements.txt
-```
-
-**Data flow (sparse mode):**
-`SyntheticMarket` → `build_block_adjacency` → `ChordalExtension` → `SparseIndexer` → `SparseLasserreRelaxation` → `MinimizerExtractor` + `scipy_optimize`
-
----
-
-## Usage
+## Reproduce
 
 ```bash
-pip install -r requirements.txt
-
-# 2-asset demo (dense hierarchy, all figures)
-python main.py --mode demo --save-figs
-
-# Sparse pipeline — n=15 assets, 3 clusters
+pip install -e ".[dev,data]"
+pytest                      # fast tests
+pytest -m slow              # bound soundness test (about a minute)
 python main.py --mode sparse --n-assets 15 --n-clusters 3
-
-# Sparse + Distributionally Robust (δ=0.02 uncertainty on kurtosis)
-python main.py --mode sparse --n-assets 15 --n-clusters 3 --delta-robust 0.02
-
-# Run all 51 unit tests
-python -m pytest tests/ -v
+python experiments/exp_a_local_vs_global.py && python experiments/summarize_exp_a.py
+python experiments/exp_b_robust.py && python experiments/summarize_exp_b.py   # writes the 14 MB results/exp_b.jsonl (not versioned)
+python scripts/download_data.py && python experiments/exp_c_real_data.py && python experiments/summarize_exp_c.py
+python scripts/make_paper_numbers.py && python paper/generate_figures.py && (cd paper && latexmk -pdf sos_portfolio.tex)
 ```
 
-Note: the tests import the `src` package directly. To run the tests locally either set the project root on `PYTHONPATH` or install the package in editable mode:
+Experiment C needs `data/raw/prices.parquet`, which is not versioned; `data/manifest.json` records the file used (tickers, dates, SHA-256).
+Experiment C takes about two hours on six workers.
 
-```bash
-# Option 1: run tests without installing
-PYTHONPATH=. python -m pytest tests/ -v
+## Layout
 
-# Option 2: install editable and run tests
-pip install -e .
-python -m pytest tests/ -v
+```
+src/sos_portfolio/   polynomial ring, relaxations, indexing, chordal graphs, extraction, local solver, empirical model
+experiments/         protocols (written before the runs), experiment scripts, summarisers
+scripts/             complexity and dense-baseline measurements, data download, paper numbers
+results/             outputs used by the paper
+docs/                claims register, design decisions
+paper/               LaTeX source, generated numbers and tables, PDF
+tests/               unit, regression and slow soundness tests
 ```
 
-Solver options: `SCS` (default, open-source), `CLARABEL` (recommended for n>10), `MOSEK` (commercial, fastest).
+## References
 
----
+Lasserre, SIAM J. Optim. 11(3), 2001. Waki, Kim, Kojima, Muramatsu, SIAM J. Optim. 17(1), 2006.
+Lasserre, SIAM J. Optim. 17(3), 2006. Henrion, Lasserre, in Positive Polynomials in Control, 2005. Full list in the paper.
 
-**Author:** Raphaël Padiou — full methodology, proofs, and numerical results in [paper/sos_portfolio.pdf](paper/sos_portfolio.pdf).
+<!-- TODO(author): decide whether to add a line about AI assistance and the audit of version 1. -->
