@@ -1,0 +1,10 @@
+n,cliques,clique_size,structure,budget,max_block,psd_entries,unique_moments,n_psd_blocks,max_moment_block,moment_block_entries,wall_s,iterations,status
+15,1,15,dense,direct,136,26688,3876,33,136,18496,,,"sizes only (closed form), not solved"
+15,3,5,sparse,star,21,2847,650,48,21,1423,2.89,12,optimal
+15,3,5,sparse,chain,21,2806,690,56,21,1404,3.59,12,optimal
+30,1,30,dense,direct,496,305598,46376,63,496,246016,,,"sizes only (closed form), not solved"
+30,6,5,sparse,star,28,6708,1440,93,28,3430,7.14,16,optimal_inaccurate
+30,6,5,sparse,chain,21,5641,1395,110,21,2835,6.63,15,optimal
+50,1,50,dense,direct,1326,2023578,316251,103,1326,1758276,,,"sizes only (closed form), not solved"
+50,10,5,sparse,star,66,15748,3051,153,66,8766,50.87,17,optimal
+50,10,5,sparse,chain,21,9421,2335,182,21,4743,26.34,16,optimal
