@@ -53,3 +53,10 @@ REPORT_FOR_AUTHOR.md
 # Raw data and large raw results (regenerable; see data/manifest.json and the experiment scripts)
 data/raw/
 results/exp_b.jsonl
+
+# Local notes and agent files
+CLAUDE.md
+.claude/
+PROMPT_*.md
+AUDIT_REPORT.md
+
