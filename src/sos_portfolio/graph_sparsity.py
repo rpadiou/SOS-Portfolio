@@ -2,7 +2,7 @@
 
 Reference: Waki, Kim, Kojima, Muramatsu, "Sums of squares and semidefinite program
 relaxations for polynomial optimization problems with structured sparsity",
-SIAM J. Optim. 17(3):218-242, 2006.
+SIAM J. Optim. 17(1):218-242, 2006.
 """
 
 from __future__ import annotations
