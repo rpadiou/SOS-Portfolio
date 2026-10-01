@@ -1,0 +1,21 @@
+seed_local: 0
+n_local_starts: 100
+K_values: [1, 5, 20, 100]
+dense_max_n: 10
+workers: 6
+sizes:
+  2: 1
+  4: 2
+  6: 2
+  8: 2
+  10: 2
+  15: 3
+  30: 6
+  50: 10
+regimes:
+  calibrated: {seeds: 50, cells: [{skew_scale: 0.3, kurt_base: 0.5, impact_base: 0.15}]}
+  mixed:      {seeds: 50, cells: [{skew_scale: 1.0, kurt_base: 0.5, impact_base: 0.15}]}
+  stress:     {seeds: 20, cells: [
+    {skew_scale: 1.0, kurt_base: 0.3, impact_base: 0.05}, {skew_scale: 1.0, kurt_base: 0.5, impact_base: 0.05},
+    {skew_scale: 2.0, kurt_base: 0.3, impact_base: 0.05}, {skew_scale: 2.0, kurt_base: 0.5, impact_base: 0.05},
+    {skew_scale: 4.0, kurt_base: 0.3, impact_base: 0.05}, {skew_scale: 4.0, kurt_base: 0.5, impact_base: 0.05}]}
