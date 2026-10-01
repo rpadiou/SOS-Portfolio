@@ -43,6 +43,13 @@ the evaluation period; nothing is tuned on the burn-in either (it is used only t
   *full* 37-asset model (`m_k` over all assets) at the V2 solution and compare with the multi-start local solution of the
   full model; report both the model objective and out-of-sample metrics.
 
+**Amendment 3 (implementation, before any evaluation-period run; found on the burn-in pipeline check):**
+`MinimizerExtractor.extract` enumerated every combination of clique atoms; sector cliques are disjoint, so with 9 sectors
+and non-flat moments (rank 16 vs 4) this gave ~1.9M candidates and the run never finished (`certify` also polishes each
+candidate by a local solve). Extraction is now declared failed beyond 64 combinations; the candidates are then the
+moment-mean point and the local solution, and the certificate (feasible point vs SDP lower bound) is unchanged. Strategies,
+weights, constraints and metrics are not modified. The fraction of rebalances where extraction failed is reported.
+
 ## Comparators (same data, same costs, run on both universes)
 
 1/N; long-only minimum variance with Ledoit-Wolf covariance (`sklearn.covariance.LedoitWolf`); equal risk contribution
