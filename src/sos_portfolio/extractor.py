@@ -116,11 +116,14 @@ class MinimizerExtractor:
         w = np.linalg.lstsq(Vm, yW, rcond=None)[0]
         return {"k": k, "vars": basis, "atoms": atoms, "weights": w, "rank": r}
 
-    def extract(self, tol: float = 1e-4) -> Dict:
+    def extract(self, tol: float = 1e-4, max_points: int = 64) -> Dict:
         """Merge clique atoms by agreement on shared variables.
 
         Returns {"points": (m, n_x) array or None, "reason": str}. Points are
         candidates; callers must check feasibility and objective value.
+        Cliques that share no variable (e.g. sectors) match every atom combination, so the
+        number of partial points is the product of the atom counts; beyond `max_points` the
+        extraction is declared failed (the moments are then not flat in practice).
         """
         if not self.asset_cliques:
             return {"points": None, "reason": "no asset clique"}
@@ -141,6 +144,8 @@ class MinimizerExtractor:
             if not new or (partial != [{}] and not matched_atoms.all()):
                 return {"points": None, "reason": f"clique {k}: atoms inconsistent on shared variables"}
             partial = new
+            if len(partial) > max_points:
+                return {"points": None, "reason": f"clique {k}: more than {max_points} atom combinations"}
         pts = [np.array([p.get(i, np.nan) for i in range(self.n_x)]) for p in partial]
         pts = [x for x in pts if not np.isnan(x).any()]
         if not pts:
