@@ -1,0 +1,164 @@
+[
+ {
+  "tag": "E1",
+  "what": "min Hessian eigenvalue on K",
+  "measured": "1.6814",
+  "reported": "1.68"
+ },
+ {
+  "tag": "E1",
+  "what": "distinct local minima (50 starts)",
+  "measured": "1",
+  "reported": "1"
+ },
+ {
+  "tag": "E1",
+  "what": "f_ub / SOS lb",
+  "measured": "0.187371 / 0.187371",
+  "reported": "0.187371"
+ },
+ {
+  "tag": "E2",
+  "what": "(4,2,0) sparse lb / UB / #min",
+  "measured": "0.034319 / 0.034319 / 1",
+  "reported": "0.034319"
+ },
+ {
+  "tag": "E2",
+  "what": "(6,2,0) sparse lb / UB / #min",
+  "measured": "0.018155 / 0.018155 / 1",
+  "reported": "0.018155"
+ },
+ {
+  "tag": "E2",
+  "what": "(6,2,1) sparse lb / UB / #min",
+  "measured": "0.001774 / 0.001774 / 1",
+  "reported": "0.001774"
+ },
+ {
+  "tag": "E2",
+  "what": "(6,3,2) sparse lb / UB / #min",
+  "measured": "0.017634 / 0.017634 / 1",
+  "reported": "0.017634"
+ },
+ {
+  "tag": "E2",
+  "what": "(8,2,3) sparse lb / UB / #min",
+  "measured": "0.005939 / 0.005939 / 1",
+  "reported": "0.005939"
+ },
+ {
+  "tag": "E3",
+  "what": "(6, 2, 0, 2.0) sparse lb",
+  "measured": "-22.065857",
+  "reported": "-22.065857"
+ },
+ {
+  "tag": "E3",
+  "what": "(6, 2, 0, 2.0) dense lb",
+  "measured": "-2.427636",
+  "reported": "-2.427636"
+ },
+ {
+  "tag": "E3",
+  "what": "(6, 2, 1, 4.0) sparse lb",
+  "measured": "-174.279652",
+  "reported": "-174.279652"
+ },
+ {
+  "tag": "E3",
+  "what": "(6, 2, 1, 4.0) dense lb",
+  "measured": "-5.399794",
+  "reported": "-5.399794"
+ },
+ {
+  "tag": "E3",
+  "what": "(6, 3, 2, 6.0) sparse lb",
+  "measured": "0.128596",
+  "reported": "0.128596"
+ },
+ {
+  "tag": "E3",
+  "what": "(6, 3, 2, 6.0) dense lb",
+  "measured": "0.128596",
+  "reported": "0.128596"
+ },
+ {
+  "tag": "E3",
+  "what": "(8, 2, 3, 5.0) sparse lb",
+  "measured": "-173.606348",
+  "reported": "-173.606348"
+ },
+ {
+  "tag": "E3",
+  "what": "(8, 2, 3, 5.0) dense lb",
+  "measured": "-6.242960",
+  "reported": "-6.24296"
+ },
+ {
+  "tag": "E4",
+  "what": "n=15 sparse unique moments",
+  "measured": "376",
+  "reported": "376"
+ },
+ {
+  "tag": "E4",
+  "what": "n=15 sparse PSD entries",
+  "measured": "1323",
+  "reported": "1323"
+ },
+ {
+  "tag": "E4",
+  "what": "n=15 dense unique moments",
+  "measured": "3876",
+  "reported": "3876"
+ },
+ {
+  "tag": "E4",
+  "what": "n=15 dense PSD entries",
+  "measured": "18496",
+  "reported": "18496"
+ },
+ {
+  "tag": "E4",
+  "what": "n=50 sparse unique moments",
+  "measured": "1251",
+  "reported": "1251"
+ },
+ {
+  "tag": "E4",
+  "what": "n=50 sparse PSD entries",
+  "measured": "4410",
+  "reported": "4410"
+ },
+ {
+  "tag": "E4",
+  "what": "n=50 dense unique moments",
+  "measured": "316251",
+  "reported": "316251"
+ },
+ {
+  "tag": "E4",
+  "what": "n=50 dense PSD entries",
+  "measured": "1758276",
+  "reported": "1758276"
+ },
+ {
+  "tag": "E5",
+  "what": "dense n=10 time (s) / status / lb",
+  "measured": "10.4 / optimal / -6.79985",
+  "reported": "11.6 / optimal_inaccurate / -6.79985"
+ },
+ {
+  "tag": "E6",
+  "what": "n=50 CLARABEL",
+  "measured": "lb=-0.005990 flat 10/10 1.69s status=optimal",
+  "reported": "lb=-0.005990 flat 10/10 1.85s"
+ },
+ {
+  "tag": "E6",
+  "what": "n=50 SCS",
+  "measured": "lb=-0.006045 flat 0/10 0.88s status=optimal",
+  "reported": "lb=-0.006045 flat 0/10"
+ }
+]
