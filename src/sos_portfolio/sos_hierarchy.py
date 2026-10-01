@@ -277,6 +277,7 @@ def build_portfolio_relaxation(
     robust_terms: Optional[Sequence[Tuple[Sequence[int], float]]] = None,
     kappa_radius: float = 0.0,
     delta_robust: Optional[float] = None,
+    x_upper: float = 1.0,
 ) -> PortfolioRelaxation:
     """Moment relaxation of min f(x) over {x >= 0, b_lo <= sum x <= b_hi}.
 
@@ -284,7 +285,7 @@ def build_portfolio_relaxation(
       "dense"   one clique on x, budget imposed directly (standard Lasserre).
       "sparse"  cliques J_k = I_k ∪ {s_k} plus budget clique(s); needs x_cliques
                 (in RIP order, e.g. `ChordalExtension.maximal_cliques`).
-    Both use the same constraints on x: x_i >= 0, 1 - x_i >= 0 (if upper_bounds),
+    Both use the same constraints on x: x_i >= 0, x_upper - x_i >= 0 (if upper_bounds; x_upper=1 by default),
     budget, and optionally per-clique balls |I_k| - sum_{I_k} x_i^2 >= 0 (`ball`;
     implied by the box constraints under the Archimedean property, so off by default).
     Every sparse constraint is implied by the dense ones at the same order, hence
@@ -297,7 +298,7 @@ def build_portfolio_relaxation(
     cons: List[Constraint] = []
     NT = n
 
-    def box(i: int, k: int, hi: float = 1.0) -> None:
+    def box(i: int, k: int, hi: float = x_upper) -> None:
         cons.append(Constraint(linear_poly(NT, {i: 1.0}), k, "ineq", f"z{i}>=0"))
         if upper_bounds:
             cons.append(Constraint(linear_poly(NT, {i: -1.0}, hi), k, "ineq", f"z{i}<={hi}"))
