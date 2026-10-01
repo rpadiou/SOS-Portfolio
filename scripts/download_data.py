@@ -11,6 +11,7 @@ may not match the hash.
 """
 import hashlib
 import json
+import os
 import sys
 
 import pandas as pd
@@ -33,5 +34,6 @@ if __name__ == "__main__":
         px = yf.download(list(u.ticker), start="2009-06-01", end="2025-12-31", auto_adjust=True, progress=False)["Close"]
         px = px[list(u.ticker)]
         print(px.shape, "missing ratio per ticker:\n", px.isna().mean().round(4).to_string())
+        os.makedirs(os.path.dirname(PATH), exist_ok=True)
         px.to_parquet(PATH)
     write_manifest()
