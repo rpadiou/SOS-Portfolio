@@ -62,24 +62,37 @@ class MultivariatePolynomial:
             self._arrays = (E, c)
         return self._arrays
 
+    def _factors(self):
+        """Padded (m, s) variable indices and exponents of each monomial (index n = dummy variable, exponent 0)."""
+        if getattr(self, "_fac", None) is None:
+            E, c = self._arr()
+            s = max(int((E > 0).sum(axis=1).max()) if len(E) else 1, 1)
+            V = np.full((len(E), s), self.n_vars, dtype=int)
+            P = np.zeros((len(E), s), dtype=int)
+            for r, row in enumerate(E):
+                nz = np.nonzero(row)[0]
+                V[r, : len(nz)] = nz
+                P[r, : len(nz)] = row[nz]
+            self._fac = (V, P)
+        return self._fac
+
     def __call__(self, x: np.ndarray) -> float:
-        E, c = self._arr()
-        x = np.asarray(x, dtype=float)
-        return float(c @ np.prod(np.power(x[None, :], E), axis=1))
+        _, c = self._arr()
+        V, P = self._factors()
+        xe = np.append(np.asarray(x, dtype=float), 1.0)
+        return float(c @ np.prod(xe[V] ** P, axis=1))
 
     def gradient(self, x: np.ndarray) -> np.ndarray:
-        E, c = self._arr()
-        x = np.asarray(x, dtype=float)
-        g = np.zeros(self.n_vars)
-        for i in range(self.n_vars):
-            m = E[:, i] > 0
-            if not m.any():
-                continue
-            Ei = E[m].copy()
-            w = c[m] * Ei[:, i]
-            Ei[:, i] -= 1
-            g[i] = w @ np.prod(np.power(x[None, :], Ei), axis=1)
-        return g
+        _, c = self._arr()
+        V, P = self._factors()
+        xe = np.append(np.asarray(x, dtype=float), 1.0)
+        F = xe[V] ** P
+        g = np.zeros(self.n_vars + 1)
+        for k in range(V.shape[1]):
+            rest = np.prod(np.delete(F, k, axis=1), axis=1) if V.shape[1] > 1 else 1.0
+            d = c * P[:, k] * xe[V[:, k]] ** np.maximum(P[:, k] - 1, 0) * rest
+            g += np.bincount(V[:, k], weights=d, minlength=self.n_vars + 1)
+        return g[: self.n_vars]
 
     def hessian(self, x: np.ndarray) -> np.ndarray:
         E, c = self._arr()
