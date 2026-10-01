@@ -43,14 +43,14 @@ Volatility, net return annualised; CVaR 5% daily; turnover = mean one-way turnov
 
 ## SOS versus multi-start local on the estimated polynomial (model objective)
 
-| universe | model | frac_local_suboptimal(>1e-4 rel) | median_rel_excess_local | max_rel_excess_local | frac_certified | frac_lb_le_obj |
-|---|---|---|---|---|---|---|
-| U10 | Poly_full_w4=0 | 0.0 | -0.0 | 0.0 | 1.0 | 0.212121 |
-| U10 | Poly_full_w4=1 | 0.0 | -0.0 | 0.0 | 1.0 | 0.924242 |
-| U10 | Poly_full_w4=3 | 0.0 | -0.0 | 0.0 | 1.0 | 0.878788 |
-| U37 | Poly_sector_w4=0 | 0.136364 | 0.0 | 3.040566 | 1.0 | 0.939394 |
-| U37 | Poly_sector_w4=1 | 0.060606 | 0.0 | 3.362018 | 1.0 | 0.94697 |
-| U37 | Poly_sector_w4=3 | 0.037879 | 0.0 | 0.278996 | 1.0 | 0.931818 |
+| universe | model | frac_local_suboptimal(>1e-4 rel) | median_rel_excess_local | max_rel_excess_local | frac_certified | lb_excess_median | lb_excess_max | frac_lb_excess_le_1e-5 |
+|---|---|---|---|---|---|---|---|---|
+| U10 | Poly_full_w4=0 | 0.0 | -0.0 | 0.0 | 1.0 | 2.0e-06 | 1.3e-05 | 0.962121 |
+| U10 | Poly_full_w4=1 | 0.0 | -0.0 | 0.0 | 1.0 | 3.2e-07 | 5.2e-06 | 1.0 |
+| U10 | Poly_full_w4=3 | 0.0 | -0.0 | 0.0 | 1.0 | 3.2e-07 | 5.2e-06 | 1.0 |
+| U37 | Poly_sector_w4=0 | 0.136364 | 0.0 | 3.040566 | 1.0 | 2.7e-07 | 1.2e-04 | 0.939394 |
+| U37 | Poly_sector_w4=1 | 0.060606 | 0.0 | 3.362018 | 1.0 | 2.0e-07 | 1.5e-05 | 0.962121 |
+| U37 | Poly_sector_w4=3 | 0.037879 | 0.0 | 0.278996 | 1.0 | 1.9e-07 | 2.6e-06 | 1.0 |
 
 ## Price of sparsity (37 assets): full co-moment model evaluated at the sector-model solution
 

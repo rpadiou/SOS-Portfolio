@@ -92,11 +92,14 @@ def main():
                 ol = np.array([r[U][loc]["obj"] for r in rows])
                 os_ = np.array([r[U][n]["obj"] for r in rows])
                 scale = np.maximum(np.abs(os_), 1e-3)
+                lbs = np.array([r[U][n].get("lb", np.nan) for r in rows], dtype=float)
+                ex = (lbs - os_) / np.maximum(1.0, np.abs(os_))   # > 0: the bound exceeds the objective at the SOS point (solver accuracy)
                 model.append({"universe": U, "model": n.replace("_SOS", ""), "frac_local_suboptimal(>1e-4 rel)": float(np.mean((ol - os_) / scale > 1e-4)),
                               "median_rel_excess_local": float(np.median((ol - os_) / scale)),
                               "max_rel_excess_local": float(np.max((ol - os_) / scale)),
                               "frac_certified": float(np.mean([r[U][n].get("certified", False) for r in rows])),
-                              "frac_lb_le_obj": float(np.mean([(r[U][n].get("lb") or -np.inf) <= r[U][n]["obj"] + 1e-6 for r in rows]))})
+                              "lb_excess_median": float(np.median(ex)), "lb_excess_max": float(np.max(ex)),
+                              "frac_lb_excess_le_1e-5": float(np.mean(ex <= 1e-5))})
     # price of sparsity
     sp = []
     for w4 in (0.0, 1.0, 3.0):
@@ -135,7 +138,7 @@ def main():
                 t[c] = t[c].map(lambda v: "" if pd.isna(v) else f.format(v))
         out_lines += [f"## Out-of-sample metrics, {U} ({'10 assets, full co-moment model' if U == 'U10' else '37 assets, 9 sectors'})", "",
                       "Volatility, net return annualised; CVaR 5% daily; turnover = mean one-way turnover per rebalance; Sharpe net of 5 bp (secondary).", "", md(t), ""]
-    out_lines += ["## SOS versus multi-start local on the estimated polynomial (model objective)", "", md(pd.DataFrame(model).round(6)), "",
+    out_lines += ["## SOS versus multi-start local on the estimated polynomial (model objective)", "", md(pd.DataFrame(model).round(6).assign(**{c: pd.DataFrame(model)[c].map("{:.1e}".format) for c in ("lb_excess_median", "lb_excess_max")})), "",
                   "## Price of sparsity (37 assets): full co-moment model evaluated at the sector-model solution", "", md(pd.DataFrame(sp)), "",
                   f"## Tests: {len(T)} pairwise comparisons, all reported; no multiple-comparison correction; intervals are 95% circular-block bootstrap (21 days), Sharpe p-values from the Ledoit-Wolf (2008) studentised bootstrap.", "",
                   md(T.round(5)), ""]
