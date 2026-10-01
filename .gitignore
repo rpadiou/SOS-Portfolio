@@ -25,8 +25,6 @@ htmlcov/
 doc/
 generate_course_figures.py
 
-# Generated figures and results
-results/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -49,3 +47,5 @@ notebooks/*.ipynb
 # OS
 .DS_Store
 Thumbs.db
+.venv/
+REPORT_FOR_AUTHOR.md

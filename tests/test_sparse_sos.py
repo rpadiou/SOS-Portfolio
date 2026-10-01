@@ -14,12 +14,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src.polynomial_ring import (
+from sos_portfolio.polynomial_ring import (
     MultivariatePolynomial,
     generate_monomials,
     eval_monomial,
 )
-from src.portfolio_problem import (
+from sos_portfolio.portfolio_problem import (
     build_objective,
     build_constraints,
     build_objective_from_market,
@@ -27,15 +27,15 @@ from src.portfolio_problem import (
     SyntheticMarket,
     BUDGET_LOWER,
 )
-from src.graph_sparsity import (
+from sos_portfolio.graph_sparsity import (
     ChordalExtension,
     build_block_adjacency,
     build_correlation_graph,
 )
-from src.indexer import SparseIndexer
-from src.sos_hierarchy import LasserreRelaxation, SparseLasserreRelaxation
-from src.extractor import MinimizerExtractor
-from src.local_solver import scipy_optimize, analyze_local_minima
+from sos_portfolio.indexer import SparseIndexer
+from sos_portfolio.sos_hierarchy import LasserreRelaxation, SparseLasserreRelaxation
+from sos_portfolio.extractor import MinimizerExtractor
+from sos_portfolio.local_solver import scipy_optimize, analyze_local_minima
 
 
 # ─────────────────────────────────────────────────────────────────────────────

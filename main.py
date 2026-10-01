@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src import (
+from sos_portfolio import (
     # Demo mode
     build_objective,
     build_constraints,

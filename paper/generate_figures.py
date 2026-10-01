@@ -4,7 +4,6 @@ Run from the project root: python paper/generate_figures.py
 """
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import matplotlib
@@ -12,11 +11,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-from src import (
+from sos_portfolio import (
     build_objective, build_constraints,
     LasserreRelaxation, scipy_optimize,
 )
-from src.portfolio_problem import evaluate_objective_grid, get_feasible_grid, BUDGET_LOWER
+from sos_portfolio.portfolio_problem import evaluate_objective_grid, get_feasible_grid, BUDGET_LOWER
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 
