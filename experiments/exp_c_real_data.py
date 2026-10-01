@@ -1,4 +1,4 @@
-"""Experiment C, step 1: walk-forward allocations on real data. See PROTOCOL_C.md (frozen before running).
+"""Experiment C, allocation stage: walk-forward allocations on real data. See PROTOCOL_C.md (frozen before running).
 
     python experiments/exp_c_real_data.py [--out results/exp_c_alloc.jsonl] [--limit 3] [--burnin]
 

@@ -53,7 +53,7 @@ class SparseIndexer:
             allkeys.append(self.keys_of_words(self.local_words(k, self.L, full=True)))
         self._keys = np.unique(np.concatenate(allkeys))
 
-    # -- encoding ----------------------------------------------------------
+    # encoding
     def keys_of_words(self, W: np.ndarray) -> np.ndarray:
         """Encode (..., m) padded words into int64 keys (multiset -> unique key)."""
         Ws = -np.sort(-W, axis=-1)[..., : self.L]
@@ -73,7 +73,7 @@ class SparseIndexer:
     def monomial_key(self, alpha: Sequence[int]) -> int:
         return int(self.keys_of_words(self.word_of_exponent(alpha)[None, :] if len(alpha) else np.zeros((1, 0), dtype=np.int64))[0])
 
-    # -- clique monomials ----------------------------------------------------
+    # clique monomials
     def _vars(self, k: int, full: bool) -> List[int]:
         return self.cliques[k] if full else self.basis[k]
 
@@ -98,7 +98,7 @@ class SparseIndexer:
             self._words[key] = W
         return self._words[key]
 
-    # -- lookups -----------------------------------------------------------
+    # lookups
     @property
     def n_moments(self) -> int:
         return len(self._keys)

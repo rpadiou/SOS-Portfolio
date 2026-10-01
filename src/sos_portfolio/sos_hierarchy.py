@@ -69,7 +69,7 @@ class MomentRelaxation:
     basis : optional per-clique variables used for the PSD blocks (see `SparseIndexer`)
     robust_terms : optional [(exponent, weight)]; with kappa_radius = delta > 0 the
         objective gets + delta * ||(w_a y_a)_a||_2 (Frobenius-ball robustness on the
-        coefficients multiplying these monomials; see `robust` docs in README)
+        coefficients multiplying these monomials; see the ball extension in docs/DESIGN_DECISIONS.md)
     """
 
     def __init__(
@@ -101,7 +101,7 @@ class MomentRelaxation:
         self.result: Optional[Dict] = None
         self._blocks: List[Tuple[str, int, int]] = []  # (kind, clique, size)
 
-    # ------------------------------------------------------------------ helpers
+    # helpers
     def _poly_terms(self, g: MultivariatePolynomial) -> List[Tuple[np.ndarray, float]]:
         ix = self.indexer
         return [(ix.word_of_exponent(a), c) for a, c in g.coeffs.items()]
@@ -112,7 +112,7 @@ class MomentRelaxation:
         idx = ix.index_of_keys(keys)
         return np.array(list(f.coeffs.values())) @ y[idx]
 
-    # -------------------------------------------------------------------- build
+    # build
     def build(self) -> Tuple[cp.Problem, cp.Variable]:
         ix, d = self.indexer, self.d
         y = cp.Variable(ix.n_moments, name="y")
@@ -158,7 +158,7 @@ class MomentRelaxation:
             obj = obj + self.kappa_radius * cp.norm(cp.multiply(wts, y[ix.index_of_keys(keys)]), 2)
         return cp.Problem(cp.Minimize(obj), cons), y
 
-    # -------------------------------------------------------------------- solve
+    # solve
     def solve(self, solver: str = "CLARABEL", verbose: bool = False, **solver_opts) -> Dict:
         """Solve; returns a dict with `lower_bound` (None if the solver failed)."""
         t0 = time.perf_counter()
@@ -214,9 +214,7 @@ class MomentRelaxation:
         }
 
 
-# =====================================================================================
 # Portfolio problem
-# =====================================================================================
 
 @dataclass
 class PortfolioRelaxation:

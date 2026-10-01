@@ -76,7 +76,7 @@ class MinimizerExtractor:
                         "sv_d": a["sv"], "sv_prev": b["sv"]})
         return {"flat": all(p["flat"] for p in per), "per_clique": per}
 
-    # ------------------------------------------------------------------ atoms
+    # atoms
     def clique_atoms(self, k: int, seed: int = 0) -> Optional[Dict]:
         """Atoms (r, |basis_k|) and weights of clique k, or None if not extractable."""
         ix, d = self.ix, self.d

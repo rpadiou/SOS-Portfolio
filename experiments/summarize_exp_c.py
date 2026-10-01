@@ -1,4 +1,4 @@
-"""Experiment C, step 2: out-of-sample metrics and tests from results/exp_c_alloc.jsonl.
+"""Experiment C, evaluation stage: out-of-sample metrics and tests from results/exp_c_alloc.jsonl.
 
 Writes results/exp_c_metrics.csv, results/exp_c_tests.csv, results/exp_c_model.csv, results/exp_c_summary.md and figures.
 """

@@ -20,7 +20,7 @@ from .polynomial_ring import MultivariatePolynomial, generate_monomials
 SIGNS = {2: 1.0, 3: -1.0, 4: 1.0}     # F = l2 m2 - l3 m3 + l4 m4
 
 
-# ------------------------------------------------------------------ model
+# model
 def prepare_window(R: np.ndarray) -> np.ndarray:
     """Centre the window and rescale so the average asset volatility is 1."""
     Rc = R - R.mean(axis=0, keepdims=True)
@@ -107,7 +107,7 @@ def solve_local(Rc, blocks, lam, n_starts: int = 20, seed: int = 0, cap: float =
     return bx
 
 
-# ------------------------------------------------------------------ baselines
+# baselines
 def ledoit_wolf_cov(R: np.ndarray) -> np.ndarray:
     from sklearn.covariance import LedoitWolf
     return LedoitWolf().fit(R).covariance_
@@ -171,7 +171,7 @@ def hrp(R: np.ndarray) -> np.ndarray:
     return w / w.sum()
 
 
-# ------------------------------------------------------------------ performance and inference
+# performance and inference
 def performance(r_net: np.ndarray, r_gross: np.ndarray) -> Dict[str, float]:
     ann = 252
     cum = np.cumsum(r_net)
