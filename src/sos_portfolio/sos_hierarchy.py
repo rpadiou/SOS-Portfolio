@@ -392,3 +392,18 @@ def build_portfolio_relaxation(
 
     rel = MomentRelaxation(NT, f.embed(NT), cl, cons, order, robust_terms, kappa_radius, _bases(cl, cons))
     return PortfolioRelaxation(rel, n, NT, structure, x_cliques, own)
+
+
+def dense_sizes(n: int, d: int = 2, upper_bounds: bool = True, eq_budget: bool = False) -> Dict[str, int]:
+    """Closed-form complexity metrics of the dense relaxation (same keys as `MomentRelaxation.sizes`).
+
+    Valid for d >= 1 with degree-1 constraints; used to report sizes that are too large to build.
+    """
+    from math import comb
+    nb = n - 1 if eq_budget else n
+    m = comb(nb + d, d)
+    loc = comb(nb + d - 1, d - 1)
+    n_loc = n * (2 if upper_bounds else 1) + (0 if eq_budget else 2)
+    return {"max_block": max(m, loc), "psd_entries": m * m + n_loc * loc * loc,
+            "unique_moments": comb(n + 2 * d, 2 * d), "n_psd_blocks": 1 + n_loc,
+            "max_moment_block": m, "moment_block_entries": m * m}
