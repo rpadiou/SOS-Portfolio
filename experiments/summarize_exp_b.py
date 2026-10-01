@@ -77,7 +77,7 @@ def main():
                 ax.plot(h["delta"].mean(), h["regret"].mean(), "D", color=col, label=f"rule c={c}")
             sh = g[g.method.str.startswith("shrink")].groupby("method")["regret"].mean()
             ax.axhline(sh.min(), color="#009E73", ls=":", label="best shrinkage")
-            ax.set_title(f"rho = {rho}", fontsize=9); ax.set_xlabel("delta"); ax.set_xscale("symlog", linthresh=0.05)
+            ax.set_title(f"rho = {rho}", fontsize=9); ax.set_xlabel("delta"); ax.set_xscale("log"); ax.set_yscale("log", nonpositive="clip")
             ax.spines[["top", "right"]].set_visible(False)
         axes[0].set_ylabel("mean true regret"); axes[-1].legend(fontsize=6, frameon=False)
         fig.suptitle(market, fontsize=9); fig.tight_layout()
