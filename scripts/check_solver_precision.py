@@ -32,7 +32,7 @@ def solve(pr, variant):
     return pr.solve(solver, max_threads=1, **opts) if solver == "CLARABEL" else pr.solve(solver, **opts)
 
 
-# ---------------------------------------------------------------------------------------------- A
+# experiment A
 def job_a(row):
     from sos_portfolio import (ChordalExtension, MinimizerExtractor, SyntheticMarket, build_objective_from_market,
                                build_portfolio_relaxation, certify)
@@ -75,7 +75,7 @@ def sample_a(rng):
     return [rows[i] for i in pick]
 
 
-# ---------------------------------------------------------------------------------------------- B
+# experiment B
 def job_b(case):
     import exp_b_robust as B
     from sos_portfolio import ChordalExtension, build_portfolio_relaxation
@@ -118,7 +118,7 @@ def sample_b():
     return cases
 
 
-# ---------------------------------------------------------------------------------------------- C
+# experiment C
 def job_c(case):
     import exp_c_real_data as C
     from sos_portfolio import MinimizerExtractor, build_portfolio_relaxation, certify
