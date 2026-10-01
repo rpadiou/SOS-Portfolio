@@ -1,0 +1,10 @@
+{
+ "python": "3.12.3",
+ "cpu": "Intel Core i5-10310U CPU @ 1.70GHz",
+ "threads": 8,
+ "cvxpy": "1.9.3",
+ "clarabel": "0.11.1",
+ "numpy": "2.5.3",
+ "scipy": "1.18.1",
+ "pandas": "3.0.6"
+}

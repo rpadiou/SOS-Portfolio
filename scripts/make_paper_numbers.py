@@ -246,12 +246,20 @@ put("smMin", sci(sm.lb_minus_fstar_tight.min()))
 import platform
 from importlib import metadata
 
-put("verPython", platform.python_version())
+# The environment is recorded once, from the interpreter that ran the experiments, so that rebuilding the paper
+# elsewhere does not change the versions reported in the appendix. Delete results/environment.json to record it again.
+envp = os.path.join(RES, "environment.json")
+if not os.path.exists(envp):
+    cpu = [l.split(":")[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name")]
+    env = {"python": platform.python_version(), "cpu": cpu[0].replace("(R)", "").replace("(TM)", ""), "threads": len(cpu),
+           **{pkg: metadata.version(pkg) for pkg in ("cvxpy", "clarabel", "numpy", "scipy", "pandas")}}
+    json.dump(env, open(envp, "w"), indent=1)
+env = json.load(open(envp))
+put("verPython", env["python"])
 for pkg, k in (("cvxpy", "Cvxpy"), ("clarabel", "Clarabel"), ("numpy", "Numpy"), ("scipy", "Scipy"), ("pandas", "Pandas")):
-    put("ver" + k, metadata.version(pkg))
-cpu = [l.split(":")[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name")]
-put("cpuModel", cpu[0].replace("(R)", "").replace("(TM)", ""))
-put("cpuThreads", len(cpu))
+    put("ver" + k, env[pkg])
+put("cpuModel", env["cpu"])
+put("cpuThreads", env["threads"])
 
 # write macros
 with open(os.path.join(OUT, "numbers.tex"), "w") as fh:
