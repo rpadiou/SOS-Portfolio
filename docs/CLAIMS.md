@@ -24,3 +24,15 @@ result lives, and its status (`verified`, `refuted`, `corrected`, `removed`,
 Note on E5: in this environment the v1.0 dense n=10 instance solved in 10.4 s with
 status `optimal` (review: 11.6 s, `optimal_inaccurate`). All other numbers of E1-E6
 reproduced exactly (see `results/review_findings_v1.json`).
+
+## v2 experiments (results-driven entries)
+
+| ID | Claim tested | Protocol | Proof script | Result file | Status |
+|----|--------------|----------|--------------|-------------|--------|
+| X-B1 | Optimising the Frobenius-ball robust objective gives a smaller *true* regret than nominal when kappa is estimated with error | `experiments/PROTOCOL_B.md` | `experiments/exp_b_robust.py`, `experiments/summarize_exp_b.py` | `results/exp_b.jsonl`, `results/exp_b_summary.md` | refuted on the tested grid: on n10-mixed the ball is worse than nominal for rho <= 0.2 at every gamma (mean regret x1.2 to x300 at rho = 0.05) and only matches it at rho = 0.5 for gamma <= 0.1 (x0.95-0.98); the automatic rule (c = 1, 2) never beats nominal. On n6-mixed it is worse at rho = 0.2 and 0.5 |
+| X-B2 | The ball does more than shrinking kappa_hat towards a structured target | same | same | same | refuted: shrinkage beats nominal when noise is large (rho >= 0.2 on the mixed markets; mean regret x0.2-0.3 at rho = 0.5) while the ball does not |
+| X-B3 | Stress markets discriminate between methods | same | same | same | not informative: nominal solution is a corner (one asset at 100%, eff. N = 1), regret ~ 0 for all methods; ratios to nominal are degenerate |
+| X-B4 | Local multi-start result is globally optimal | same | same | same | partially verified: SDP order-2 check on 280 solves certifies 85% of nominal and 83% of robust cases; uncertified robust cases may reflect the relaxation gap ||E z|| <= E||z||, not local failure |
+
+Experiment B is a negative result for the robust extension (see also E8b): it is
+reported as found, per the reading rule of the protocol.
