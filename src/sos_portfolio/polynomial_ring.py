@@ -1,253 +1,148 @@
-"""
-Polynomial Ring Module — SOS-Portfolio
-=======================================
+"""Sparse multivariate polynomials with numpy-backed evaluation."""
 
-Implements the algebraic engine for multivariate polynomials in the ring
-R[x_1, ..., x_n], providing the foundation for the Lasserre SOS hierarchy.
+from __future__ import annotations
 
-Mathematical Framework
-----------------------
-A polynomial p ∈ R[x_1, ..., x_n] of degree d is represented as:
-
-    p(x) = Σ_{|α| ≤ d} c_α · x^α
-
-where α = (α_1, ..., α_n) ∈ N^n is a multi-index, |α| = Σ α_i,
-and x^α = x_1^{α_1} · ... · x_n^{α_n}.
-
-Gram (SOS) Representation
---------------------------
-A polynomial p is SOS (Sum-of-Squares) if and only if there exists a PSD
-matrix Q ≽ 0 such that:
-
-    p(x) = v(x)^T Q v(x)
-
-where v(x) is the vector of monomials up to degree ⌊deg(p)/2⌋.
-"""
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from itertools import product
-from typing import Dict, List, Tuple, Optional
-from functools import lru_cache
 
-
-# Type alias: multi-index → coefficient
 Monomial = Tuple[int, ...]
 Coefficients = Dict[Monomial, float]
 
 
 def generate_monomials(n_vars: int, degree: int) -> List[Monomial]:
-    """
-    Enumerate all monomials x^α with |α| ≤ degree in n_vars variables.
+    """All exponents alpha in N^n_vars with |alpha| <= degree, graded-lex order."""
+    out: List[Monomial] = []
 
-    Produces the canonical monomial basis of the truncated polynomial space:
-
-        M_{n,d} = { α ∈ N^n : |α| = Σ α_i ≤ d }
-
-    The dimension is C(n + d, d) = (n+d)! / (n! d!).
-
-    Uses a recursive composition generator — O(output size) not O((d+1)^n).
-    """
-    monomials: List[Monomial] = []
-
-    def _gen(n: int, remaining: int, current: List[int]) -> None:
+    def gen(n: int, remaining: int, current: List[int]) -> None:
         if n == 1:
-            monomials.append(tuple(current + [remaining]))
+            out.append(tuple(current + [remaining]))
             return
         for k in range(remaining + 1):
             current.append(k)
-            _gen(n - 1, remaining - k, current)
+            gen(n - 1, remaining - k, current)
             current.pop()
 
-    for total_deg in range(degree + 1):
-        _gen(n_vars, total_deg, [])
-    return monomials
+    for total in range(degree + 1):
+        gen(n_vars, total, [])
+    return out
 
 
 def eval_monomial(alpha: Monomial, x: np.ndarray) -> float:
-    """
-    Evaluate the monomial x^α = x_1^{α_1} · ... · x_n^{α_n}.
-
-    Parameters
-    ----------
-    alpha : Monomial
-        Multi-index (α_1, ..., α_n).
-    x : np.ndarray
-        Point in R^n.
-
-    Returns
-    -------
-    float
-        Value x^α.
-    """
-    return float(np.prod([xi ** ai for xi, ai in zip(x, alpha)]))
-
-
-def eval_monomial_vector(monomials: List[Monomial], x: np.ndarray) -> np.ndarray:
-    """
-    Evaluate the monomial vector v(x) = [x^{α_1}, x^{α_2}, ..., x^{α_s}]^T.
-
-    Parameters
-    ----------
-    monomials : List[Monomial]
-        Ordered list of multi-indices.
-    x : np.ndarray
-        Evaluation point in R^n.
-
-    Returns
-    -------
-    np.ndarray
-        Vector v(x) ∈ R^s.
-    """
-    return np.array([eval_monomial(alpha, x) for alpha in monomials])
+    return float(np.prod(np.power(np.asarray(x, dtype=float), np.asarray(alpha))))
 
 
 class MultivariatePolynomial:
-    """
-    Represents an element of the polynomial ring R[x_1, ..., x_n].
-
-    A polynomial is stored as a sparse dictionary mapping multi-indices
-    to real coefficients:  p = { α : c_α | c_α ≠ 0 }
-
-    Supports ring operations (+, -, *) and evaluation.
-
-    Attributes
-    ----------
-    n_vars : int
-        Number of variables n.
-    coeffs : Coefficients
-        Sparse coefficient dictionary { α → c_α }.
-    degree : int
-        Total degree deg(p) = max{ |α| : c_α ≠ 0 }.
-    """
+    """p(x) = sum_alpha c_alpha x^alpha, stored as {alpha: c_alpha}."""
 
     def __init__(self, n_vars: int, coeffs: Optional[Coefficients] = None):
-        """
-        Construct p ∈ R[x_1, ..., x_n].
-
-        Parameters
-        ----------
-        n_vars : int
-            Ambient dimension n.
-        coeffs : dict, optional
-            Coefficient dictionary { α → c_α }.
-        """
         self.n_vars = n_vars
         self.coeffs: Coefficients = {}
-        if coeffs:
-            for alpha, c in coeffs.items():
-                if abs(c) > 1e-14:
-                    self.coeffs[tuple(alpha)] = float(c)
+        for alpha, c in (coeffs or {}).items():
+            if abs(c) > 1e-14:
+                self.coeffs[tuple(int(a) for a in alpha)] = float(c)
+        self._arrays: Optional[Tuple[np.ndarray, np.ndarray]] = None
 
     @property
     def degree(self) -> int:
-        """Total degree: deg(p) = max |α| over all terms with c_α ≠ 0."""
-        if not self.coeffs:
-            return 0
-        return max(sum(alpha) for alpha in self.coeffs)
+        return max((sum(a) for a in self.coeffs), default=0)
+
+    def support(self) -> set:
+        """Indices of variables appearing in at least one monomial."""
+        return {i for a in self.coeffs for i, e in enumerate(a) if e > 0}
+
+    def _arr(self) -> Tuple[np.ndarray, np.ndarray]:
+        if self._arrays is None:
+            if self.coeffs:
+                E = np.array(list(self.coeffs.keys()), dtype=int)
+                c = np.array(list(self.coeffs.values()), dtype=float)
+            else:
+                E = np.zeros((0, self.n_vars), dtype=int)
+                c = np.zeros(0)
+            self._arrays = (E, c)
+        return self._arrays
 
     def __call__(self, x: np.ndarray) -> float:
-        """
-        Evaluate p at point x ∈ R^n.
+        E, c = self._arr()
+        x = np.asarray(x, dtype=float)
+        return float(c @ np.prod(np.power(x[None, :], E), axis=1))
 
-        p(x) = Σ_α c_α · x^α
+    def gradient(self, x: np.ndarray) -> np.ndarray:
+        E, c = self._arr()
+        x = np.asarray(x, dtype=float)
+        g = np.zeros(self.n_vars)
+        for i in range(self.n_vars):
+            m = E[:, i] > 0
+            if not m.any():
+                continue
+            Ei = E[m].copy()
+            w = c[m] * Ei[:, i]
+            Ei[:, i] -= 1
+            g[i] = w @ np.prod(np.power(x[None, :], Ei), axis=1)
+        return g
 
-        Parameters
-        ----------
-        x : np.ndarray
-            Evaluation point, shape (n,).
-
-        Returns
-        -------
-        float
-            Scalar value p(x).
-        """
-        return sum(c * eval_monomial(alpha, x) for alpha, c in self.coeffs.items())
+    def hessian(self, x: np.ndarray) -> np.ndarray:
+        E, c = self._arr()
+        x = np.asarray(x, dtype=float)
+        n = self.n_vars
+        H = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i, n):
+                Eij = E.copy()
+                w = c * Eij[:, i]
+                Eij[:, i] -= 1
+                w = w * Eij[:, j]
+                Eij[:, j] -= 1
+                m = (Eij >= 0).all(axis=1) & (w != 0)
+                if m.any():
+                    H[i, j] = H[j, i] = w[m] @ np.prod(np.power(x[None, :], Eij[m]), axis=1)
+        return H
 
     def __add__(self, other: "MultivariatePolynomial") -> "MultivariatePolynomial":
-        result = MultivariatePolynomial(self.n_vars, dict(self.coeffs))
-        for alpha, c in other.coeffs.items():
-            result.coeffs[alpha] = result.coeffs.get(alpha, 0.0) + c
-            if abs(result.coeffs[alpha]) < 1e-14:
-                del result.coeffs[alpha]
-        return result
+        out = dict(self.coeffs)
+        for a, c in other.coeffs.items():
+            out[a] = out.get(a, 0.0) + c
+        return MultivariatePolynomial(self.n_vars, out)
 
     def __mul__(self, other) -> "MultivariatePolynomial":
         if isinstance(other, (int, float)):
-            return MultivariatePolynomial(
-                self.n_vars, {alpha: other * c for alpha, c in self.coeffs.items()}
-            )
-        result_coeffs: Coefficients = {}
+            return MultivariatePolynomial(self.n_vars, {a: other * c for a, c in self.coeffs.items()})
+        out: Coefficients = {}
         for a1, c1 in self.coeffs.items():
             for a2, c2 in other.coeffs.items():
-                alpha = tuple(a1[i] + a2[i] for i in range(self.n_vars))
-                result_coeffs[alpha] = result_coeffs.get(alpha, 0.0) + c1 * c2
-        return MultivariatePolynomial(self.n_vars, result_coeffs)
+                a = tuple(u + v for u, v in zip(a1, a2))
+                out[a] = out.get(a, 0.0) + c1 * c2
+        return MultivariatePolynomial(self.n_vars, out)
 
-    def gradient(self, x: np.ndarray) -> np.ndarray:
-        """
-        Evaluate the gradient ∇p(x) ∈ R^n.
+    __rmul__ = __mul__
 
-        ∂p/∂x_i = Σ_α c_α · α_i · x^{α - e_i}
-
-        Parameters
-        ----------
-        x : np.ndarray
-            Evaluation point.
-
-        Returns
-        -------
-        np.ndarray
-            Gradient vector ∇p(x).
-        """
-        grad = np.zeros(self.n_vars)
-        for alpha, c in self.coeffs.items():
-            for i in range(self.n_vars):
-                if alpha[i] > 0:
-                    new_alpha = list(alpha)
-                    new_alpha[i] -= 1
-                    grad[i] += c * alpha[i] * eval_monomial(tuple(new_alpha), x)
-        return grad
+    def embed(self, n_total: int, var_map: Optional[List[int]] = None) -> "MultivariatePolynomial":
+        """Re-index variables: variable i becomes var_map[i] (default identity) in n_total variables."""
+        var_map = list(range(self.n_vars)) if var_map is None else var_map
+        out: Coefficients = {}
+        for a, c in self.coeffs.items():
+            b = [0] * n_total
+            for i, e in enumerate(a):
+                if e:
+                    b[var_map[i]] = e
+            out[tuple(b)] = c
+        return MultivariatePolynomial(n_total, out)
 
     def __repr__(self) -> str:
         terms = []
-        for alpha, c in sorted(self.coeffs.items(), key=lambda kv: (sum(kv[0]), kv[0])):
-            mono_str = " ".join(f"x{i+1}^{a}" if a > 1 else f"x{i+1}"
-                                for i, a in enumerate(alpha) if a > 0) or "1"
-            terms.append(f"{c:+.4f}·{mono_str}")
+        for a, c in sorted(self.coeffs.items(), key=lambda kv: (sum(kv[0]), kv[0])):
+            m = " ".join(f"x{i + 1}^{e}" if e > 1 else f"x{i + 1}" for i, e in enumerate(a) if e) or "1"
+            terms.append(f"{c:+.4g}*{m}")
         return " ".join(terms) if terms else "0"
 
 
-def gram_matrix_to_polynomial(Q: np.ndarray, monomials: List[Monomial],
-                               n_vars: int) -> MultivariatePolynomial:
-    """
-    Reconstruct the polynomial p from its Gram decomposition.
-
-    Given a PSD matrix Q and monomial vector v(x), compute:
-
-        p(x) = v(x)^T Q v(x) = Σ_{i,j} Q_{ij} · x^{α_i + α_j}
-
-    This is the fundamental link between the algebraic SOS certificate
-    and its polynomial representation.
-
-    Parameters
-    ----------
-    Q : np.ndarray
-        Gram matrix, shape (s, s), must be PSD for p to be SOS.
-    monomials : List[Monomial]
-        Monomial basis v(x).
-    n_vars : int
-        Number of variables.
-
-    Returns
-    -------
-    MultivariatePolynomial
-        The polynomial p = v^T Q v.
-    """
-    coeffs: Coefficients = {}
-    s = len(monomials)
-    for i in range(s):
-        for j in range(s):
-            if abs(Q[i, j]) > 1e-14:
-                alpha = tuple(monomials[i][k] + monomials[j][k] for k in range(n_vars))
-                coeffs[alpha] = coeffs.get(alpha, 0.0) + Q[i, j]
-    return MultivariatePolynomial(n_vars, coeffs)
+def linear_poly(n_vars: int, coef: Dict[int, float], const: float = 0.0) -> MultivariatePolynomial:
+    """const + sum_i coef[i] x_i."""
+    d: Coefficients = {}
+    if const:
+        d[(0,) * n_vars] = const
+    for i, c in coef.items():
+        a = [0] * n_vars
+        a[i] = 1
+        d[tuple(a)] = d.get(tuple(a), 0.0) + c
+    return MultivariatePolynomial(n_vars, d)

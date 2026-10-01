@@ -1,576 +1,394 @@
-"""
-Sparse & Distributionally Robust Lasserre SOS Hierarchy — SOS-Portfolio
-========================================================================
+"""Moment-SOS (Lasserre) relaxations, dense and correlatively sparse.
 
-Implements the Waki–Kim–Kojima–Muramatsu sparse SOS relaxation at order d=2
-with optional Distributionally Robust (DR) augmentation on the kurtosis tensor.
+`MomentRelaxation` is a generic clique-based moment relaxation of
 
-Dense vs Sparse Complexity
---------------------------
-Dense (n assets, order d):
-  Single PSD block: C(n+d,d) × C(n+d,d).
-  n=50, d=2: 1326×1326 → ~1.76M scalar variables.
+    min f(x)  s.t.  g_j(x) >= 0,  h_j(x) = 0
 
-Sparse (p-clique, order d):
-  Per-clique PSD block: C(p+d,d) × C(p+d,d).
-  p=5 cliques, d=2: 21×21 → 441 per clique.
-  10 cliques → 4,410 scalar variables. Reduction: ~400×.
+with moment matrices and localizing matrices restricted to cliques
+(Waki-Kim-Kojima-Muramatsu 2006; Lasserre, SIAM J. Optim. 17(3):822-843, 2006).
+A dense relaxation is the case of a single clique containing all variables, so
+dense and sparse bounds are produced by the same code and the same constraint set.
 
-Distributionally Robust Augmentation
--------------------------------------
-Uncertainty set on kurtosis tensor κ̄:
+Every constraint must be supported in the clique it is attached to; nothing is
+silently dropped or relaxed.
 
-    U(δ) = { κ : ‖κ - κ̄‖_F ≤ δ }
-
-Worst-case kurtosis contribution given moment sequence y:
-
-    max_{‖Δκ‖_F ≤ δ}  ⟨κ̄ + Δκ, y^{(4)}⟩  =  ⟨κ̄, y^{(4)}⟩ + δ · ‖y^{(4)}‖_2
-
-where y^{(4)} = [y_α]_{|α|=4} is the vector of degree-4 moments. The DR
-relaxation adds one second-order cone constraint to the moment SDP:
-
-    min_{y, τ}  L_y(f_nominal) + δ · τ
-    s.t.        ‖y^{(4)}‖_2 ≤ τ             (SOC)
-                M_d^{I_k}(y) ≽ 0             (per-clique PSD)
-                M_{d-1}^{I_k}(g_j · y) ≽ 0  (per-clique localizing)
-                y_0 = 1                       (normalisation)
-
-Reference: Waki et al. (2006) SIAM J. Optim. 17(1):218–242.
-           Delage & Ye (2010) Management Science 56(9):1483–1495.
+`build_portfolio_relaxation` builds the portfolio problem. The budget
+b_lo <= sum_i x_i <= b_hi couples all cliques, so in the sparse structure it is
+imposed pointwise through sector-sum variables s_k = sum_{i in O_k} x_i, where O_k
+are the variables *owned* by clique k (first clique containing them): the
+equalities s_k - sum_{O_k} x_i = 0 live in the extended clique J_k = I_k ∪ {s_k}
+and the budget lives in the clique S = {s_1, ..., s_K} (star clique tree, RIP holds
+since J_k ∩ S = {s_k}). With `budget="chain"` partial sums p_k = p_{k-1} + s_k give
+cliques {s_k, p_{k-1}, p_k} of size 3 instead of one clique of size K.
 """
 
 from __future__ import annotations
 
 import time
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import cvxpy as cp
 import numpy as np
+import scipy.sparse as sp
 
 from .indexer import SparseIndexer
-from .polynomial_ring import MultivariatePolynomial, Monomial, generate_monomials
+from .polynomial_ring import MultivariatePolynomial, linear_poly
+
+SOLVERS = {"CLARABEL": cp.CLARABEL, "SCS": cp.SCS, "MOSEK": "MOSEK"}
 
 
-class SparseLasserreRelaxation:
-    """
-    Sparse Lasserre SDP relaxation at order d for n-asset portfolios.
+def _independent_rows(A: sp.csr_matrix, tol: float = 1e-10) -> sp.csr_matrix:
+    """Drop linearly dependent rows (pivoted QR); redundant equalities make the IPM KKT system singular."""
+    import scipy.linalg as sla
+    if A.shape[0] == 0:
+        return A
+    _, R, P = sla.qr(A.toarray().T, mode="economic", pivoting=True)
+    dg = np.abs(np.diag(R))
+    rank = int(np.sum(dg > tol * max(dg[0], 1e-300)))
+    return A[np.sort(P[:rank])]
+
+
+@dataclass
+class Constraint:
+    poly: MultivariatePolynomial
+    clique: int
+    kind: str = "ineq"  # "ineq": g >= 0, "eq": h = 0
+    name: str = ""
+
+
+class MomentRelaxation:
+    """Clique-based moment relaxation of order `order`.
 
     Parameters
     ----------
-    f : MultivariatePolynomial
-        Degree-4 objective polynomial.
-    constraints : List[MultivariatePolynomial]
-        Constraint polynomials g_j with K = {g_j ≥ 0}.
-    cliques : List[List[int]]
-        Maximal cliques from chordal extension of the correlation graph.
-    order : int
-        Relaxation order d ≥ 2.
-    delta_robust : float
-        DR robustness parameter δ ≥ 0. 0 = nominal SOS, >0 = DR-SOS.
+    n_vars : number of variables (including auxiliary ones)
+    objective : polynomial in n_vars variables
+    cliques : variable lists, in an order satisfying the running intersection property
+    constraints : `Constraint` list; each support must lie in its clique
+    basis : optional per-clique variables used for the PSD blocks (see `SparseIndexer`)
+    robust_terms : optional [(exponent, weight)]; with kappa_radius = delta > 0 the
+        objective gets + delta * ||(w_a y_a)_a||_2 (Frobenius-ball robustness on the
+        coefficients multiplying these monomials; see `robust` docs in README)
     """
 
     def __init__(
         self,
-        f: MultivariatePolynomial,
-        constraints: List[MultivariatePolynomial],
-        cliques: List[List[int]],
+        n_vars: int,
+        objective: MultivariatePolynomial,
+        cliques: Sequence[Sequence[int]],
+        constraints: Sequence[Constraint],
         order: int = 2,
-        delta_robust: float = 0.0,
+        robust_terms: Optional[Sequence[Tuple[Sequence[int], float]]] = None,
+        kappa_radius: float = 0.0,
+        basis: Optional[Sequence[Sequence[int]]] = None,
     ) -> None:
-        self.f = f
-        self.constraints = constraints
-        self.n = f.n_vars
+        self.n = n_vars
+        self.f = objective
         self.d = order
-        self.cliques = cliques
-        self.delta_robust = delta_robust
-
-        self.indexer = SparseIndexer(n=self.n, d=order, cliques=cliques)
+        if objective.degree > 2 * order:
+            raise ValueError(f"objective of degree {objective.degree} needs order >= {(objective.degree + 1) // 2}")
+        self.constraints = list(constraints)
+        self.indexer = SparseIndexer(n_vars, order, cliques, basis)
+        self.cliques = self.indexer.cliques
+        self.robust_terms = list(robust_terms or [])
+        self.kappa_radius = float(kappa_radius)
+        for c in self.constraints:
+            sup = c.poly.support()
+            if not sup <= set(self.cliques[c.clique]):
+                raise ValueError(f"constraint {c.name!r} (support {sorted(sup)}) is not contained "
+                                 f"in clique {c.clique} = {self.cliques[c.clique]}")
         self.result: Optional[Dict] = None
+        self._blocks: List[Tuple[str, int, int]] = []  # (kind, clique, size)
 
-        # Degree-4 moment indices for DR cone
-        self._deg4_indices: List[int] = [
-            self.indexer.global_index(alpha)
-            for alpha in self.indexer.all_global_moments()
-            if sum(alpha) == 4
-        ]
+    # ------------------------------------------------------------------ helpers
+    def _poly_terms(self, g: MultivariatePolynomial) -> List[Tuple[np.ndarray, float]]:
+        ix = self.indexer
+        return [(ix.word_of_exponent(a), c) for a, c in g.coeffs.items()]
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    def _y_of_poly(self, y: cp.Variable, f: MultivariatePolynomial) -> cp.Expression:
+        ix = self.indexer
+        keys = np.array([ix.monomial_key(a) for a in f.coeffs], dtype=np.int64)
+        idx = ix.index_of_keys(keys)
+        return np.array(list(f.coeffs.values())) @ y[idx]
 
-    def build_and_solve(
-        self, solver: str = "SCS", verbose: bool = False
-    ) -> Dict:
-        """
-        Construct and solve the sparse (DR-)SOS relaxation.
-
-        Returns
-        -------
-        dict with keys:
-          lower_bound, status, solve_time, moments, moment_matrices,
-          n_scalar_vars, n_sdp_blocks, indexer
-        """
-        t0 = time.perf_counter()
-
-        y, sdp_constraints = self._build_moment_constraints()
-
-        # Objective: L_y(f) = Σ_α f_α y_α
-        obj_expr = self._build_objective_expr(y)
-
-        # DR augmentation: add δ · τ with ‖y^{(4)}‖_2 ≤ τ
-        if self.delta_robust > 0.0 and self._deg4_indices:
-            tau = cp.Variable(nonneg=True, name="tau_DR")
-            y4 = cp.vstack([y[i] for i in self._deg4_indices])
-            sdp_constraints.append(cp.norm(y4, 2) <= tau)
-            obj_expr = obj_expr + self.delta_robust * tau
-
-        problem = cp.Problem(cp.Minimize(obj_expr), sdp_constraints)
-
-        solver_map = {
-            "SCS": cp.SCS,
-            "MOSEK": cp.MOSEK,
-            "CLARABEL": cp.CLARABEL,
-        }
-        solver_id = solver_map.get(solver.upper(), cp.SCS)
-
-        solver_kwargs: Dict = {"verbose": verbose}
-        if solver_id == cp.SCS:
-            solver_kwargs.update({"eps": 1e-4, "max_iters": 50_000})
-
-        try:
-            problem.solve(solver=solver_id, **solver_kwargs)
-        except Exception as exc:
-            return {
-                "lower_bound": None,
-                "status": f"Error: {exc}",
-                "solve_time": time.perf_counter() - t0,
-                "moments": None,
-                "moment_matrices": {},
-            }
-
-        lb = (
-            float(problem.value)
-            if problem.value is not None and np.isfinite(problem.value)
-            else None
-        )
-
-        # Extract per-clique moment matrix values
-        moment_matrices: Dict[int, np.ndarray] = {}
+    # -------------------------------------------------------------------- build
+    def build(self) -> Tuple[cp.Problem, cp.Variable]:
+        ix, d = self.indexer, self.d
+        y = cp.Variable(ix.n_moments, name="y")
+        cons: List = [y[int(ix.index_of_keys(np.zeros(1, dtype=np.int64))[0])] == 1]
+        self._blocks = []
+        eq_rows: List[sp.spmatrix] = []
         for k in range(len(self.cliques)):
-            var = self._M_vars.get(k)
-            if var is not None and var.value is not None:
-                moment_matrices[k] = var.value
+            cons.append(cp.PSD(y[ix.pair_index(k, d)]))
+            self._blocks.append(("moment", k, len(ix.local_monomials(k, d))))
+        for c in self.constraints:
+            deg = c.poly.degree
+            terms = self._poly_terms(c.poly)
+            if c.kind == "ineq":
+                dloc = d - (deg + 1) // 2
+                if dloc < 0:
+                    raise ValueError(f"constraint {c.name!r} has degree too high for order {d}")
+                expr = 0
+                for w, coef in terms:
+                    expr = expr + coef * y[ix.pair_index(c.clique, dloc, w)]
+                cons.append(cp.PSD(expr))
+                self._blocks.append(("localizing", c.clique, len(ix.local_monomials(c.clique, dloc))))
+            else:
+                bdeg = 2 * d - deg
+                W = ix.local_words(c.clique, bdeg, full=True)
+                rows, cols, vals = [], [], []
+                for w, coef in terms:
+                    Wt = np.concatenate([W, np.broadcast_to(w[None, :], (W.shape[0], len(w)))], axis=1)
+                    j = ix.index_of_keys(ix.keys_of_words(Wt))
+                    rows.append(np.arange(W.shape[0]))
+                    cols.append(j)
+                    vals.append(np.full(W.shape[0], coef))
+                A = sp.coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+                                  shape=(W.shape[0], ix.n_moments)).tocsr()
+                eq_rows.append(A)
+        if eq_rows:
+            A = _independent_rows(sp.vstack(eq_rows).tocsr())
+            self.n_equalities = A.shape[0]
+            cons.append(A @ y == 0)
+        obj = self._y_of_poly(y, self.f)
+        if self.kappa_radius > 0 and self.robust_terms:
+            keys = np.array([ix.monomial_key(list(a) + [0] * (self.n - len(a))) for a, _ in self.robust_terms])
+            wts = np.array([w for _, w in self.robust_terms])
+            obj = obj + self.kappa_radius * cp.norm(cp.multiply(wts, y[ix.index_of_keys(keys)]), 2)
+        return cp.Problem(cp.Minimize(obj), cons), y
 
-        self.result = {
-            "lower_bound": lb,
-            "status": problem.status,
-            "solve_time": time.perf_counter() - t0,
-            "moments": y.value,
-            "moment_matrices": moment_matrices,
-            "n_scalar_vars": y.size,
-            "n_sdp_blocks": len(self.cliques),
-            "indexer": self.indexer,
-            "moment_matrix": moment_matrices.get(0),
-        }
-        return self.result
-
-    def flat_extension_check(self, tol: float = 1e-6) -> Dict:
-        """
-        Per-clique Curto–Fialkow flat extension check.
-
-        For each clique I_k, tests rank(M_d^{I_k}) = rank(M_{d-1}^{I_k}).
-        Returns aggregate result (converged = True iff ALL cliques flat).
-        """
-        if self.result is None or not self.result["moment_matrices"]:
-            return {"converged": False, "error": "No solution available"}
-        if self.d < 2:
-            return {"converged": False, "error": "Need d ≥ 2 for flat extension"}
-
-        y_vals = self.result["moments"]
-        if y_vals is None:
-            return {"converged": False, "error": "Solver returned no moments"}
-
-        per_clique: List[Dict] = []
-        all_converged = True
-
-        for k, clique in enumerate(self.cliques):
-            M_d = self.result["moment_matrices"].get(k)
-            if M_d is None:
-                per_clique.append({"k": k, "converged": False, "error": "no matrix"})
-                all_converged = False
-                continue
-
-            M_d_prev = self._build_local_moment_matrix_np(
-                k, clique, y_vals, self.d - 1
-            )
-
-            svd_d = np.linalg.svd(M_d, compute_uv=False)
-            svd_prev = np.linalg.svd(M_d_prev, compute_uv=False)
-
-            thresh_d = tol * max(svd_d[0], 1e-12)
-            thresh_prev = tol * max(svd_prev[0], 1e-12)
-
-            rank_d = int(np.sum(svd_d > thresh_d))
-            rank_prev = int(np.sum(svd_prev > thresh_prev))
-            flat = rank_d == rank_prev
-
-            per_clique.append({
-                "k": k,
-                "converged": flat,
-                "rank_d": rank_d,
-                "rank_d_minus_1": rank_prev,
-                "singular_values_Md": svd_d,
-                "singular_values_Md1": svd_prev,
-            })
-            if not flat:
-                all_converged = False
-
-        # Use first clique's singular values for legacy visualization interface
-        first = per_clique[0] if per_clique else {}
-        return {
-            "converged": all_converged,
-            "rank_d": first.get("rank_d"),
-            "rank_d_minus_1": first.get("rank_d_minus_1"),
-            "singular_values_Md": first.get("singular_values_Md"),
-            "singular_values_Md1": first.get("singular_values_Md1"),
-            "per_clique": per_clique,
-        }
-
-    # ── SDP construction ──────────────────────────────────────────────────────
-
-    def _build_moment_constraints(
-        self,
-    ) -> Tuple[cp.Variable, List]:
-        """
-        Construct the global moment variable y and all SDP/linear constraints.
-
-        Returns
-        -------
-        y : cp.Variable
-            Global moment sequence, length = indexer.n_moments.
-        constraints : List
-            All CVXPY constraints.
-        """
-        idx = self.indexer
-        N = idx.n_moments
-        y = cp.Variable(N, name="y")
-        constraints: List = []
-
-        # Normalisation: y_0 = 1
-        zero_alpha = tuple([0] * self.n)
-        constraints.append(y[idx.global_index(zero_alpha)] == 1)
-
-        self._M_vars: Dict[int, cp.Variable] = {}
-
-        for k, clique in enumerate(self.cliques):
-            p = len(clique)
-            # ── Moment matrix M_d^{I_k}(y) ≽ 0 ──────────────────────────
-            # Build the s_d×s_d index array (numpy, fast O(s_d²) Python ops)
-            # then link M to y with ONE matrix equality instead of s_d² scalars.
-            local_mons_d = idx.local_monomials(k, self.d)
-            s_d = len(local_mons_d)
-            M = cp.Variable((s_d, s_d), symmetric=True, name=f"M_{k}")
-            self._M_vars[k] = M
-
-            M_indices = np.empty((s_d, s_d), dtype=int)
-            for i, alpha in enumerate(local_mons_d):
-                for j, beta in enumerate(local_mons_d):
-                    gamma_local = tuple(alpha[l] + beta[l] for l in range(p))
-                    M_indices[i, j] = idx.local_to_global(k, gamma_local)
-
-            # Single matrix equality: O(1) CVXPY constraint objects
-            constraints.append(M == y[M_indices])
-            constraints.append(M >> 0)
-
-            # ── Localizing matrices per constraint per clique ──────────────
-            for g_idx_constraint, g in enumerate(self.constraints):
-                v_g = int(np.ceil(g.degree / 2))
-                d_loc = self.d - v_g
-                if d_loc < 0:
-                    continue
-
-                # Determine which variables this constraint uses
-                g_vars_used: set = set()
-                for mono in g.coeffs:
-                    for var_i, exp in enumerate(mono):
-                        if exp > 0:
-                            g_vars_used.add(var_i)
-
-                clique_set = set(clique)
-                if not g_vars_used.issubset(clique_set) and g_vars_used:
-                    # Global constraint (e.g. budget): handled via linear moments
-                    continue
-
-                local_mons_loc = idx.local_monomials(k, d_loc)
-                s_loc = len(local_mons_loc)
-                if s_loc == 0:
-                    continue
-
-                L = cp.Variable((s_loc, s_loc), symmetric=True,
-                                name=f"L_{k}_g{g_idx_constraint}")
-
-                # Build localizing index array or coefficient map
-                # For single-term constraints (e.g. g_i = x_i), use fast path.
-                if len(g.coeffs) == 1:
-                    (g_mono, c_g) = next(iter(g.coeffs.items()))
-                    L_indices = np.empty((s_loc, s_loc), dtype=int)
-                    valid = True
-                    for i, alpha_l in enumerate(local_mons_loc):
-                        for j, beta_l in enumerate(local_mons_loc):
-                            g_global = self._embed_constraint_mono(
-                                k, clique, alpha_l, beta_l, g_mono
-                            )
-                            if g_global is not None and idx.has_moment(g_global):
-                                L_indices[i, j] = idx.global_index(g_global)
-                            else:
-                                valid = False
-                                break
-                        if not valid:
-                            break
-                    if valid:
-                        if abs(c_g - 1.0) < 1e-14:
-                            constraints.append(L == y[L_indices])
-                        else:
-                            constraints.append(L == c_g * y[L_indices])
-                    else:
-                        # Fallback: scalar loop
-                        for i, alpha_l in enumerate(local_mons_loc):
-                            for j, beta_l in enumerate(local_mons_loc):
-                                expr = 0
-                                has_term = False
-                                for gm, cg in g.coeffs.items():
-                                    gg = self._embed_constraint_mono(
-                                        k, clique, alpha_l, beta_l, gm)
-                                    if gg is not None and idx.has_moment(gg):
-                                        expr = expr + cg * y[idx.global_index(gg)]
-                                        has_term = True
-                                constraints.append(L[i, j] == (expr if has_term else 0))
-                else:
-                    # Multi-term constraint: fall back to scalar loop
-                    for i, alpha_l in enumerate(local_mons_loc):
-                        for j, beta_l in enumerate(local_mons_loc):
-                            expr = 0
-                            has_term = False
-                            for g_mono, c_g in g.coeffs.items():
-                                g_global = self._embed_constraint_mono(
-                                    k, clique, alpha_l, beta_l, g_mono)
-                                if g_global is not None and idx.has_moment(g_global):
-                                    expr = expr + c_g * y[idx.global_index(g_global)]
-                                    has_term = True
-                            constraints.append(L[i, j] == (expr if has_term else 0))
-
-                constraints.append(L >> 0)
-
-        # ── Global budget constraints as linear moment inequalities ────────
-        # g_lo: E_μ[Σ x_i] = Σ y_{e_i} ≥ budget_lower
-        # g_hi: E_μ[Σ x_i] = Σ y_{e_i} ≤ 1
-        y_sum_expr = 0
-        for i in range(self.n):
-            alpha = [0] * self.n
-            alpha[i] = 1
-            a_t = tuple(alpha)
-            if idx.has_moment(a_t):
-                y_sum_expr = y_sum_expr + y[idx.global_index(a_t)]
-
-        # These encode E_μ[g_lo] ≥ 0 and E_μ[g_hi] ≥ 0 as scalar constraints
-        # (valid because g_lo, g_hi ≥ 0 on K and μ is a probability measure)
-        # Find budget_lower from constraints
-        budget_lower = 0.95
-        for g in self.constraints:
-            if g.n_vars == self.n:
-                zero_key = tuple([0] * self.n)
-                if zero_key in g.coeffs and g.coeffs[zero_key] < 0:
-                    budget_lower = -g.coeffs[zero_key]
-                    break
-
-        constraints.append(y_sum_expr >= budget_lower)
-        constraints.append(y_sum_expr <= 1.0)
-
-        return y, constraints
-
-    def _embed_constraint_mono(
-        self,
-        k: int,
-        clique: List[int],
-        alpha_l: Tuple[int, ...],
-        beta_l: Tuple[int, ...],
-        g_mono: Tuple[int, ...],
-    ) -> Optional[Tuple[int, ...]]:
-        """
-        Compute α + β + γ for the localizing matrix entry, fully embedded.
-
-        alpha_l, beta_l are LOCAL multi-indices for clique k.
-        g_mono is a GLOBAL multi-index (length = self.n).
-
-        Returns the global multi-index or None if out of range.
-        """
-        n = self.n
-        result = list(g_mono)  # start from global g coefficient multi-index
-        for local_pos, global_var in enumerate(clique):
-            result[global_var] += alpha_l[local_pos] + beta_l[local_pos]
-        # Check degree bound
-        if sum(result) > 2 * self.d + max(
-            (g.degree for g in self.constraints), default=0
-        ):
-            return None
-        return tuple(result)
-
-    def _build_objective_expr(self, y: cp.Variable) -> cp.Expression:
-        """Build L_y(f) = Σ_α f_α y_α as a CVXPY expression."""
-        idx = self.indexer
-        expr: cp.Expression = 0
-        for alpha, c_f in self.f.coeffs.items():
-            if idx.has_moment(alpha):
-                expr = expr + c_f * y[idx.global_index(alpha)]
-        return expr
-
-    def _build_local_moment_matrix_np(
-        self,
-        k: int,
-        clique: List[int],
-        y_vals: np.ndarray,
-        order: int,
-    ) -> np.ndarray:
-        """Build the order-d' local moment matrix as a numpy array from y."""
-        idx = self.indexer
-        local_mons = idx.local_monomials(k, order)
-        s = len(local_mons)
-        M = np.zeros((s, s))
-        for i, alpha in enumerate(local_mons):
-            for j, beta in enumerate(local_mons):
-                gamma_local = tuple(
-                    alpha[l] + beta[l] for l in range(len(clique))
-                )
-                g_idx = idx.local_to_global(k, gamma_local)
-                M[i, j] = y_vals[g_idx]
-        return M
-
-
-# ── Legacy dense interface (backward compatible with original main.py) ─────
-
-class LasserreRelaxation:
-    """
-    Legacy dense Lasserre relaxation for the 2-asset toy model.
-
-    Kept for backward compatibility with existing main.py and tests.
-    For n > 2 assets use SparseLasserreRelaxation.
-    """
-
-    def __init__(
-        self,
-        f: MultivariatePolynomial,
-        constraints: List[MultivariatePolynomial],
-        order: int,
-    ) -> None:
-        self.f = f
-        self.constraints = constraints
-        self.n = f.n_vars
-        self.d = order
-        self.moment_monomials = generate_monomials(self.n, self.d)
-        self.s = len(self.moment_monomials)
-        self.result: Optional[Dict] = None
-
-    def build_and_solve(self, solver: str = "SCS", verbose: bool = False) -> Dict:
-        monomials_2d = generate_monomials(self.n, 2 * self.d)
-        n_moments = len(monomials_2d)
-        mono_to_idx = {m: i for i, m in enumerate(monomials_2d)}
-        zero_idx = mono_to_idx[tuple([0] * self.n)]
-
-        y = cp.Variable(n_moments)
-        constraints: List = [y[zero_idx] == 1]
-
-        M = cp.Variable((self.s, self.s), symmetric=True)
-        for i, alpha in enumerate(self.moment_monomials):
-            for j, beta in enumerate(self.moment_monomials):
-                gamma = tuple(alpha[k] + beta[k] for k in range(self.n))
-                if gamma in mono_to_idx:
-                    constraints.append(M[i, j] == y[mono_to_idx[gamma]])
-                else:
-                    constraints.append(M[i, j] == 0)
-        constraints.append(M >> 0)
-
-        for g in self.constraints:
-            v_g = int(np.ceil(g.degree / 2))
-            d_loc = self.d - v_g
-            if d_loc < 0:
-                continue
-            loc_monomials = generate_monomials(self.n, d_loc)
-            s_loc = len(loc_monomials)
-            L = cp.Variable((s_loc, s_loc), symmetric=True)
-
-            for i, alpha in enumerate(loc_monomials):
-                for j, beta in enumerate(loc_monomials):
-                    expr = 0
-                    has_term = False
-                    for gamma, c_g in g.coeffs.items():
-                        delta = tuple(
-                            alpha[k] + beta[k] + gamma[k] for k in range(self.n)
-                        )
-                        if delta in mono_to_idx:
-                            expr = expr + c_g * y[mono_to_idx[delta]]
-                            has_term = True
-                    constraints.append(L[i, j] == (expr if has_term else 0))
-            constraints.append(L >> 0)
-
-        obj_expr = sum(
-            c_f * y[mono_to_idx[alpha]]
-            for alpha, c_f in self.f.coeffs.items()
-            if alpha in mono_to_idx
-        )
-
-        problem = cp.Problem(cp.Minimize(obj_expr), constraints)
-        solver_map = {"SCS": cp.SCS, "MOSEK": cp.MOSEK, "CLARABEL": cp.CLARABEL}
-        solver_id = solver_map.get(solver.upper(), cp.SCS)
-
+    # -------------------------------------------------------------------- solve
+    def solve(self, solver: str = "CLARABEL", verbose: bool = False, **solver_opts) -> Dict:
+        """Solve; returns a dict with `lower_bound` (None if the solver failed)."""
+        t0 = time.perf_counter()
+        problem, y = self.build()
+        t_build = time.perf_counter() - t0
+        sid = SOLVERS.get(solver.upper())
+        if sid is None:
+            raise ValueError(f"unknown solver {solver!r}")
+        opts = dict(solver_opts)
+        if sid == cp.CLARABEL:
+            for k in ("tol_gap_abs", "tol_gap_rel", "tol_feas"):
+                opts.setdefault(k, 1e-7)
+        if sid == cp.SCS:
+            opts.setdefault("eps", 1e-6)
+            opts.setdefault("max_iters", 100_000)
+        t1 = time.perf_counter()
         try:
-            problem.solve(solver=solver_id, verbose=verbose)
-        except Exception as e:
-            return {"lower_bound": None, "status": f"Error: {e}",
-                    "moments": None, "moment_matrix": None}
-
-        lb = (
-            float(problem.value)
-            if problem.value is not None and np.isfinite(problem.value)
-            else None
-        )
+            problem.solve(solver=sid, verbose=verbose, **opts)
+            status = problem.status
+        except cp.error.SolverError as exc:
+            status = f"solver_error: {exc}"
+        t_solve = time.perf_counter() - t1
+        ok = problem.value is not None and np.isfinite(problem.value) and y.value is not None
+        stats = problem.solver_stats
         self.result = {
-            "lower_bound": lb,
-            "status": problem.status,
-            "moments": y.value,
-            "moment_matrix": M.value,
-            "monomials_2d": monomials_2d,
-            "moment_monomials": self.moment_monomials,
+            "lower_bound": float(problem.value) if ok else None,
+            "status": status,
+            "inaccurate": "inaccurate" in status,
+            "solver": solver.upper(),
+            "iterations": getattr(stats, "num_iters", None) if stats is not None else None,
+            "build_time": t_build,
+            "solve_time": t_solve,
+            "moments": np.asarray(y.value) if ok else None,
+            "sizes": self.sizes(),
         }
         return self.result
 
-    def flat_extension_check(self, tol: float = 1e-4) -> Dict:
-        if self.result is None or self.result["moment_matrix"] is None:
-            return {"converged": False, "error": "No solution available"}
-        if self.d <= 1:
-            return {"converged": False, "error": "Need d ≥ 2 for flat extension"}
+    def moment_matrix(self, k: int, order: Optional[int] = None,
+                      y: Optional[np.ndarray] = None) -> np.ndarray:
+        y = self.result["moments"] if y is None else y
+        return y[self.indexer.pair_index(k, self.d if order is None else order)]
 
-        M_full = self.result["moment_matrix"]
-        svd_full = np.linalg.svd(M_full, compute_uv=False)
-        rank_d = int(np.sum(svd_full > tol * svd_full[0]))
-
-        mono_prev = generate_monomials(self.n, self.d - 1)
-        s_prev = len(mono_prev)
-        monomials_2d = self.result["monomials_2d"]
-        mono_to_idx = {m: i for i, m in enumerate(monomials_2d)}
-        y = self.result["moments"]
-
-        M_prev = np.zeros((s_prev, s_prev))
-        for i, alpha in enumerate(mono_prev):
-            for j, beta in enumerate(mono_prev):
-                gamma = tuple(alpha[k] + beta[k] for k in range(self.n))
-                if gamma in mono_to_idx:
-                    M_prev[i, j] = y[mono_to_idx[gamma]]
-
-        svd_prev = np.linalg.svd(M_prev, compute_uv=False)
-        rank_prev = int(np.sum(svd_prev > tol * svd_prev[0]))
-
+    def sizes(self) -> Dict[str, int]:
+        """Complexity metrics: largest PSD block, total PSD entries, unique moments."""
+        s = [b[2] for b in self._blocks] or [0]
         return {
-            "converged": rank_d == rank_prev,
-            "rank_d": rank_d,
-            "rank_d_minus_1": rank_prev,
-            "singular_values_Md": svd_full,
-            "singular_values_Md1": svd_prev,
+            "max_block": int(max(s)),
+            "psd_entries": int(sum(v * v for v in s)),
+            "unique_moments": int(self.indexer.n_moments),
+            "n_psd_blocks": len(self._blocks),
+            "max_moment_block": int(max([b[2] for b in self._blocks if b[0] == "moment"] or [0])),
+            "moment_block_entries": int(sum(b[2] ** 2 for b in self._blocks if b[0] == "moment")),
         }
+
+
+# =====================================================================================
+# Portfolio problem
+# =====================================================================================
+
+@dataclass
+class PortfolioRelaxation:
+    relaxation: MomentRelaxation
+    n: int              # number of asset variables (ids 0..n-1)
+    n_total: int        # including auxiliary variables
+    structure: str
+    x_cliques: List[List[int]]
+    owners: List[List[int]]
+
+    def solve(self, *a, **kw) -> Dict:
+        return self.relaxation.solve(*a, **kw)
+
+    @property
+    def cliques(self) -> List[List[int]]:
+        return self.relaxation.cliques
+
+
+def _owners(n: int, x_cliques: Sequence[Sequence[int]]) -> List[List[int]]:
+    own: List[List[int]] = [[] for _ in x_cliques]
+    seen = set()
+    for k, c in enumerate(x_cliques):
+        for i in sorted(c):
+            if i not in seen:
+                seen.add(i)
+                own[k].append(i)
+    if len(seen) != n:
+        raise ValueError("every variable must belong to at least one clique")
+    return own
+
+
+def _bases(cliques: Sequence[Sequence[int]], cons: Sequence[Constraint]) -> List[List[int]]:
+    """Per-clique PSD basis: drop one variable (the largest id) per linear equality.
+
+    An equality  sum_j a_j z_j + c = 0  lets z_p be written through the others, so
+    monomials containing z_p are redundant rows/columns of the moment matrix.
+    """
+    basis = [set(c) for c in cliques]
+    for c in cons:
+        if c.kind != "eq":
+            continue
+        live = [v for v in c.poly.support() if v in basis[c.clique]]
+        if live:
+            basis[c.clique].discard(max(live))
+    return [sorted(b) for b in basis]
+
+
+def build_portfolio_relaxation(
+    f: MultivariatePolynomial,
+    x_cliques: Optional[Sequence[Sequence[int]]] = None,
+    b_lo: float = 0.95,
+    b_hi: float = 1.0,
+    order: int = 2,
+    structure: str = "sparse",
+    budget: str = "star",
+    ball: bool = False,
+    upper_bounds: bool = True,
+    robust_terms: Optional[Sequence[Tuple[Sequence[int], float]]] = None,
+    kappa_radius: float = 0.0,
+    delta_robust: Optional[float] = None,
+) -> PortfolioRelaxation:
+    """Moment relaxation of min f(x) over {x >= 0, b_lo <= sum x <= b_hi}.
+
+    structure
+      "dense"   one clique on x, budget imposed directly (standard Lasserre).
+      "sparse"  cliques J_k = I_k ∪ {s_k} plus budget clique(s); needs x_cliques
+                (in RIP order, e.g. `ChordalExtension.maximal_cliques`).
+    Both use the same constraints on x: x_i >= 0, 1 - x_i >= 0 (if upper_bounds),
+    budget, and optionally per-clique balls |I_k| - sum_{I_k} x_i^2 >= 0 (`ball`;
+    implied by the box constraints under the Archimedean property, so off by default).
+    Every sparse constraint is implied by the dense ones at the same order, hence
+    lb_sparse <= lb_dense when ball=False.
+    """
+    if delta_robust is not None:  # alias kept for v1 callers
+        kappa_radius = delta_robust
+    n = f.n_vars
+    eq_budget = abs(b_hi - b_lo) < 1e-12
+    cons: List[Constraint] = []
+    NT = n
+
+    def box(i: int, k: int, hi: float = 1.0) -> None:
+        cons.append(Constraint(linear_poly(NT, {i: 1.0}), k, "ineq", f"z{i}>=0"))
+        if upper_bounds:
+            cons.append(Constraint(linear_poly(NT, {i: -1.0}, hi), k, "ineq", f"z{i}<={hi}"))
+
+    def ball_c(members: Sequence[int], k: int) -> None:
+        if ball:
+            d = {}
+            for j in members:
+                a = [0] * NT
+                a[j] = 2
+                d[tuple(a)] = -1.0
+            d[(0,) * NT] = float(len(members))
+            cons.append(Constraint(MultivariatePolynomial(NT, d), k, "ineq", "ball"))
+
+    def budget_c(members: Dict[int, float], k: int) -> None:
+        p = linear_poly(NT, members)
+        if eq_budget:
+            cons.append(Constraint(p + linear_poly(NT, {}, -b_lo), k, "eq", "budget"))
+        else:
+            cons.append(Constraint(p + linear_poly(NT, {}, -b_lo), k, "ineq", "budget_lo"))
+            cons.append(Constraint(linear_poly(NT, {i: -v for i, v in members.items()}, b_hi), k, "ineq", "budget_hi"))
+
+    if structure == "dense":
+        cl = [list(range(n))]
+        for i in range(n):
+            box(i, 0)
+        budget_c({i: 1.0 for i in range(n)}, 0)
+        ball_c(range(n), 0)
+        rel = MomentRelaxation(NT, f, cl, cons, order, robust_terms, kappa_radius, _bases(cl, cons))
+        return PortfolioRelaxation(rel, n, NT, structure, cl, [list(range(n))])
+
+    if structure != "sparse":
+        raise ValueError(f"unknown structure {structure!r}")
+    if x_cliques is None:
+        raise ValueError("x_cliques required for structure 'sparse'")
+    x_cliques = [sorted(c) for c in x_cliques]
+    own = _owners(n, x_cliques)
+    owning = [k for k, o in enumerate(own) if o]
+    K = len(owning)
+    s_id = {k: n + m for m, k in enumerate(owning)}
+    chain = budget == "chain" and K > 2
+    NT = n + K + (K if chain else 0)
+    p_id = {k: n + K + m for m, k in enumerate(owning)} if chain else {}
+
+    J = [sorted(set(c) | ({s_id[k]} if k in s_id else set())) for k, c in enumerate(x_cliques)]
+    extra: List[List[int]] = []
+    if K >= 2 and not chain:
+        extra = [[s_id[k] for k in owning]]
+    elif chain:
+        prev = None
+        for k in owning:
+            extra.append(sorted({s_id[k], p_id[k]} | ({p_id[prev]} if prev is not None else set())))
+            prev = k
+    cl = J + extra
+    seen_c = set()
+
+    def once(key, fn):
+        if key not in seen_c:
+            seen_c.add(key)
+            fn()
+
+    for k in range(len(x_cliques)):
+        for i in x_cliques[k]:
+            once(("box", i, k), lambda i=i, k=k: box(i, k))
+        if k in s_id:
+            s = s_id[k]
+            once(("box", s, k), lambda s=s, k=k: box(s, k, b_hi))
+            cons.append(Constraint(linear_poly(NT, {s: 1.0, **{i: -1.0 for i in own[k]}}), k, "eq", f"sector{k}"))
+        ball_c(x_cliques[k], k)
+
+    if K == 1:
+        k0 = owning[0]
+        budget_c({s_id[k0]: 1.0}, k0)
+    elif not chain:
+        c = len(J)
+        for k in owning:
+            once(("box", s_id[k], c), lambda k=k, c=c: box(s_id[k], c, b_hi))
+        budget_c({s_id[k]: 1.0 for k in owning}, c)
+    else:
+        prev = None
+        for m, k in enumerate(owning):
+            c = len(J) + m
+            s, p = s_id[k], p_id[k]
+            once(("box", s, c), lambda s=s, c=c: box(s, c, b_hi))
+            once(("box", p, c), lambda p=p, c=c: box(p, c, b_hi))
+            coef = {p: 1.0, s: -1.0}
+            if prev is not None:
+                coef[p_id[prev]] = -1.0
+            cons.append(Constraint(linear_poly(NT, coef), c, "eq", f"chain{m}"))
+            prev = k
+        budget_c({p_id[owning[-1]]: 1.0}, len(cl) - 1)
+
+    rel = MomentRelaxation(NT, f.embed(NT), cl, cons, order, robust_terms, kappa_radius, _bases(cl, cons))
+    return PortfolioRelaxation(rel, n, NT, structure, x_cliques, own)
