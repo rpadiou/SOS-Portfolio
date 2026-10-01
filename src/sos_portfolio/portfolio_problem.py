@@ -11,7 +11,7 @@ below are not calibrated to data.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -163,3 +163,35 @@ def evaluate_objective_grid(f: MultivariatePolynomial, n_points: int = 100):
     X1, X2, _ = get_feasible_grid(n_points)
     Z = np.array([[f(np.array([a, b])) for a, b in zip(r1, r2)] for r1, r2 in zip(X1, X2)])
     return X1, X2, Z
+
+
+def make_nonconvex(
+    n: int = 6,
+    n_clusters: int = 2,
+    seed: int = 0,
+    min_minima: int = 2,
+    skew_scales: Sequence[float] = (2.0, 3.0, 4.0, 6.0),
+    kurt_base: float = 0.3,
+    impact_base: float = 0.05,
+    n_starts: int = 60,
+) -> Tuple[SyntheticMarket, Dict]:
+    """Stress-test instance with at least `min_minima` distinct local minima.
+
+    Strong skewness and low kurtosis make the degree-3 terms dominate and the
+    objective non-convex. The scale is increased along `skew_scales` until a
+    multi-start run (`n_starts` SLSQP starts) finds `min_minima` distinct KKT
+    points. These are *uncalibrated stress regimes*, not realistic markets.
+    Raises RuntimeError if no scale in the grid qualifies.
+    """
+    from .local_solver import analyze_local_minima, scipy_optimize
+
+    for sk in skew_scales:
+        m = SyntheticMarket.generate(n, n_clusters, seed, skew_scale=sk, kurt_base=kurt_base,
+                                     impact_base=impact_base)
+        f = build_objective_from_market(m)
+        out = scipy_optimize(f, n_starts, seed, m.budget_lower, m.budget_upper)
+        mins = analyze_local_minima(out["results"])
+        if mins["n_distinct_minima"] >= min_minima:
+            return m, {"skew_scale": sk, "n_local_minima": mins["n_distinct_minima"],
+                       "minima_values": [mm["f"] for mm in mins["local_minima"]]}
+    raise RuntimeError(f"no skew_scale in {tuple(skew_scales)} gives {min_minima} local minima (seed={seed})")

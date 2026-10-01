@@ -28,3 +28,34 @@ def test_convex_quadratic_single_minimum():
     out = scipy_optimize(f, 20, 1)
     np.testing.assert_allclose(out["x_opt"], [0.95 / 3] * 3, atol=1e-5)
     assert analyze_local_minima(out["results"])["n_distinct_minima"] == 1
+
+
+def grid_local_minima(f, b_lo, b_hi, m=120):
+    """Local minima of f on a fine grid of {x1+x2 in [b_lo,b_hi]}, n=2 (independent of SLSQP)."""
+    import itertools
+    pts = {}
+    for i, j in itertools.product(range(m + 1), repeat=2):
+        x = np.array([i / m, j / m])
+        if b_lo - 1e-12 <= x.sum() <= b_hi + 1e-12:
+            pts[(i, j)] = f(x)
+    mins = []
+    for (i, j), v in pts.items():
+        nb = [pts[(i + a, j + b)] for a in (-1, 0, 1) for b in (-1, 0, 1) if (a or b) and (i + a, j + b) in pts]
+        if all(v <= u + 1e-12 for u in nb):
+            mins.append((i / m, j / m, v))
+    return mins
+
+
+def test_make_nonconvex_has_several_minima_two_assets():
+    from sos_portfolio import make_nonconvex
+    found = 0
+    for seed in range(12):
+        try:
+            mk, info = make_nonconvex(2, 1, seed, min_minima=2)
+        except RuntimeError:
+            continue
+        f = build_objective_from_market(mk)
+        found += 1
+        assert info["n_local_minima"] >= 2
+        assert len(grid_local_minima(f, 0.95, 1.0)) >= 2      # confirmed on a fine grid
+    assert found >= 1
