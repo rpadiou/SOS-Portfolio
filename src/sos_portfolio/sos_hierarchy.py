@@ -17,8 +17,8 @@ b_lo <= sum_i x_i <= b_hi couples all cliques, so in the sparse structure it is
 imposed pointwise through sector-sum variables s_k = sum_{i in O_k} x_i, where O_k
 are the variables *owned* by clique k (first clique containing them): the
 equalities s_k - sum_{O_k} x_i = 0 live in the extended clique J_k = I_k ∪ {s_k}
-and the budget lives in the clique S = {s_1, ..., s_K} (star clique tree, RIP holds
-since J_k ∩ S = {s_k}). With `budget="chain"` partial sums p_k = p_{k-1} + s_k give
+and the budget lives in the clique S = {s_1, ..., s_K} (star clique tree; for disjoint
+cliques RIP holds since J_k ∩ S = {s_k}). With `budget="chain"` partial sums p_k = p_{k-1} + s_k give
 cliques {s_k, p_{k-1}, p_k} of size 3 instead of one clique of size K.
 """
 

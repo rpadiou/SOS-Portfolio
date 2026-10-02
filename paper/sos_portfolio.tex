@@ -84,7 +84,9 @@ Convergence at $d=2$ is not guaranteed.
 
 \paragraph{Correlative sparsity.}
 Let $I_1,\dots,I_m$ be the maximal cliques of a chordal extension of the interaction graph.
-The sparse relaxation uses one moment matrix per clique \cite{waki2006,lasserre2006}.
+The sparse relaxation uses one moment matrix per clique.
+Waki et al.\ \cite{waki2006} establish that it is valid and weaker than the dense one.
+Lasserre \cite{lasserre2006} proves that, under the running intersection property, it converges to $f^\star$ as the order grows.
 At equal order, $\lb^{\mathrm{sparse}}\le\lb^{\mathrm{dense}}$.
 Without the budget variables this is immediate, since each sparse block is a principal submatrix of a dense block.
 With the sector-sum variables of the next paragraph, substituting $s_k=\sum_{i\in O_k}x_i$ in a dense moment vector gives a sparse-feasible point with the same objective; a regression test checks it numerically.
@@ -95,7 +97,8 @@ I now add the sector sums $s_k=\sum_{i\in O_k}x_i$, where $O_k$ is the set of va
 The equalities $s_k=\sum_{i\in O_k}x_i$ live in the clique $I_k\cup\{s_k\}$ and the budget lives in a clique on $\{s_1,\dots,s_m\}$.
 This is the star variant.
 For many cliques I use partial sums $p_k=p_{k-1}+s_k$, which give cliques of size three (chain variant).
-Both satisfy the running intersection property.
+For disjoint cliques, which are the clusters of this paper, both satisfy the running intersection property.
+With overlapping cliques the budget clique closes a cycle, the property fails, and the builder warns; the relaxation stays valid.
 
 \paragraph{Certificate.}
 After solving, I take candidate points from the Henrion--Lasserre extraction \cite{henrion2005} when the rank condition holds, and from the first-order moments otherwise.

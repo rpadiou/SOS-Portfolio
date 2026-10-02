@@ -39,7 +39,8 @@ clique of a sparse decomposition. Options:
    problem in a useful sense (E3).
 3. Sector sums `s_k = sum_{i in O_k} x_i` (`O_k` = variables owned by clique `k`).
    The equalities live in `J_k = I_k ∪ {s_k}`, the budget in `S = {s_1..s_K}`.
-   `J_k ∩ S = {s_k}`, so the star tree satisfies the running intersection property.
+   `J_k ∩ S = {s_k}`, so for disjoint cliques the star tree satisfies the running intersection property
+   (with overlapping cliques it does not; see below).
    This is what is implemented (`budget="star"`).
 4. For large `K`, the clique `S` has a moment block of size `C(K+2,2)`. Partial sums
    `p_k = p_{k-1} + s_k` give cliques `{s_k, p_{k-1}, p_k}` of size 3
