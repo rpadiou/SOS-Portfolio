@@ -54,12 +54,92 @@ The sparse budget constraint decoupled the cliques, a size-reduction ratio mixed
 Appendix~\ref{app:v1} lists them with the measured values.
 I fixed them before running any experiment below.
 
-\section{Risk model}
+\section{Background}\label{sec:bg}
+This section defines the finance used below.
+Appendix~\ref{app:ind} gives the formula of each indicator as implemented, Appendix~\ref{app:ref} the baseline strategies and Appendix~\ref{app:voc} the vocabulary.
+
+\paragraph{Portfolio, returns, drift.}
+A portfolio of $n$ assets is a vector of weights $x\in\R^n$, where $x_i$ is the share of wealth held in asset $i$.
+The budget constraint $\mathbf 1^\top x=1$ means that all wealth is invested.
+Long-only means $x\ge0$: no short sales.
+The simple return of an asset on day $t$ is $r_t=P_t/P_{t-1}-1$; the log return is $\log(P_t/P_{t-1})$.
+$P_t$ is the adjusted close, corrected for splits and dividends.
+A portfolio earns $x^\top r_t$ in simple returns; log returns do not add up across assets.
+The experiments estimate on daily log returns and evaluate on simple returns, as the code does.
+Between two rebalancing dates the weights drift: $x_i\leftarrow x_i(1+r_{t,i})/(1+x^\top r_t)$.
+Rebalancing is the trade back to the target weights, and it costs money in proportion to what is traded.
+
+\paragraph{Variance, covariance, correlation.}
+With $T$ daily returns, $\Sigma_{ij}$ is the sample covariance of assets $i$ and $j$, and $x^\top\Sigma x$ is the variance of the portfolio return.
+Volatility is its square root; it is annualised by $\sqrt{252}$, the number of trading days in a year.
+The correlation $\Sigma_{ij}/\sqrt{\Sigma_{ii}\Sigma_{jj}}$ lies in $[-1,1]$.
+The median pairwise correlation of the \uN{} stocks is \uCorr: diversification lowers risk but does not remove it.
+
+\paragraph{Markowitz.}
+Minimum variance solves $\min_x x^\top\Sigma x$ subject to $\mathbf 1^\top x=1$.
+Without sign constraints the solution is $\Sigma^{-1}\mathbf 1/(\mathbf 1^\top\Sigma^{-1}\mathbf 1)$.
+With $x\ge0$ the problem is a convex quadratic program, and any solver returns its global optimum.
+Adding a target for the mean return traces the efficient frontier.
+Variance does not see asymmetry or tail weight: two portfolios with the same variance can lose very different amounts on their worst days.
+
+\paragraph{Skewness and kurtosis.}
+For a return $p$ with mean $\mu$ and standard deviation $s$, skewness is $E[(p-\mu)^3]/s^3$ and kurtosis is $E[(p-\mu)^4]/s^4$.
+A normal law has skewness 0 and kurtosis 3.
+On the \uN{} stocks (\uReturns{} daily log returns) the median skewness is \uSkewMed{}, from \uSkewMin{} to \uSkewMax{}, and it is negative for \uSkewNeg{} stocks.
+The median kurtosis is \uKurtMed{}, from \uKurtMin{} to \uKurtMax{}: extreme days are much more frequent than a normal law predicts (fat tails).
+
+\paragraph{Why a polynomial of degree four.}
+For $p=x^\top r$ the moment of order $k$ is $E[p^k]=\sum_{i_1,\dots,i_k}x_{i_1}\cdots x_{i_k}\,E[r_{i_1}\cdots r_{i_k}]$.
+It is a homogeneous polynomial of degree $k$ in $x$, and its coefficients are the co-moments of the returns.
+Variance has degree two, skewness three, kurtosis four.
+A risk function that penalises variance and kurtosis and rewards skewness is therefore a polynomial of degree four.
+A fourth-order expansion of expected utility is the usual argument for these three terms.
+The full fourth co-moment has \uCoMom{} distinct coefficients for \uN{} assets, against \uObs{} observations in a 756-day window.
+This is why Experiment~C also uses a sector model with far fewer coefficients.
+
+\paragraph{Three sources of error.}
+\emph{Model error}: the polynomial is not the investor's true objective (here it has no return term).
+\emph{Estimation error}: its coefficients are estimated from a finite window.
+\emph{Optimisation error}: the solver returns a point whose value exceeds the minimum of the polynomial.
+The certificate controls only the third.
+It bounds $f(\hat x)-\min f$ for the polynomial as given, and says nothing about the first two.
+Experiment~A studies the third on synthetic polynomials, Experiment~B the second by drawing errors on the coefficients, and Experiment~C mixes all three.
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Notation.}\label{tab:not}
+\begin{tabular}{p{1.9cm}p{5.6cm}p{6.7cm}}
+\toprule
+Symbol & Financial meaning & Mathematical meaning\\
+\midrule
+$n$, $x$ & number of assets; portfolio weights & number of variables; point of $\R^n$\\
+$r_t$, $\Sigma$ & daily asset returns; their covariance & vector in $\R^n$; positive semidefinite matrix\\
+$f$, $f^\star$ & risk to minimise; lowest risk attainable & polynomial of degree four; its global minimum on $K$\\
+$K$ & admissible portfolios (long-only, budget); also the number of local starts in Experiment~A & polyhedron $\{x\ge0,\ b_{\mathrm{lo}}\le\mathbf 1^\top x\le b_{\mathrm{hi}}\}$\\
+$b_{\mathrm{lo}}$, $b_{\mathrm{hi}}$ & least and greatest invested share (synthetic markets) & bounds on $\mathbf 1^\top x$\\
+$\eta_i$, $\kappa_{ij}$ & skewness-like and kurtosis-like coefficients of the synthetic model & coefficients of $x_i^3$ and $x_i^2x_j^2$; not co-moments\\
+$d$, $y_\alpha$ & --- & relaxation order; variable standing for the monomial $x^\alpha$\\
+$M_d(y)$ & --- & moment matrix, constrained to be positive semidefinite\\
+$\lb$ & certified lower bound on the risk & optimum of the relaxation, $\lb\le f^\star$\\
+$\hat x$ & portfolio returned & feasible point tested by the certificate\\
+$I_k$, $s_k$ & sector $k$; its total weight & clique of the interaction graph; auxiliary variable\\
+$m_k(x)$ & sample moment of order $k$ of the centred portfolio return & polynomial of degree $k$ in $x$\\
+$\ell_k$, $w_k$ & scale of each term; weight chosen for it & coefficients of $F=\ell_2m_2-\ell_3m_3+\ell_4m_4$\\
+$\rho$ & relative size of the error on the coefficients (Exp.~B) & $\|\varepsilon\|_W/\|\theta\|_W$\\
+$\delta$, $\gamma$ & robustness margin; its relative size & radius of the Frobenius ball; $\gamma=\delta/\|\theta\|_W$\\
+$s$ & shrinkage intensity & weight of the target in $(1-s)\hat\kappa+s\,\kappa_{\mathrm{target}}$\\
+$N_{\mathrm{eff}}$ & effective number of assets & $1/\sum_ix_i^2$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Risk model}\label{sec:model}
 The synthetic objective is
 \begin{equation}
 f(x)=x^\top\Sigma x+\sum_i\eta_i x_i^3+\sum_{i,j}\kappa_{ij}\,x_i^2x_j^2+\text{concentration terms},
 \end{equation}
 on $K=\{x\ge 0,\ b_{\mathrm{lo}}\le \mathbf 1^\top x\le b_{\mathrm{hi}}\}$ with $b_{\mathrm{lo}}=0.95$ and $b_{\mathrm{hi}}=1$.
+The coefficients $\eta_i$ play the part of skewness and the $\kappa_{ij}$ that of kurtosis.
 The last terms are a stylised concentration penalty on the weights.
 They are quartic so that $f$ has degree four and they are larger on concentrated positions.
 They are not calibrated and not derived from an execution model.
@@ -153,7 +233,11 @@ So the certificate is available at $d=2$ even though the rank test, applied at a
 \end{figure}
 
 \subsection{Experiment A: local search against the relaxation}
-I generate \aN{} instances with $n\in\{2,4,6,8,10,15,30,50\}$ assets in three regimes (default, mixed, stress), 50 to 120 per cell.
+I generate \aN{} instances with $n\in\{2,4,6,8,10,15,30,50\}$ assets in three regimes, 50 to 120 per cell.
+A regime fixes the scale of the three families of coefficients of the risk model.
+In the default regime (named ``calibrated'' in the code and the tables, although nothing is calibrated to data) the skewness scale is \rgSkewDef{}, the kurtosis scale \rgKurt{} and the concentration scale \rgImpDef{}.
+The mixed regime raises the skewness scale to \rgSkewMix{}.
+The stress regime uses skewness scales from \rgSkewStrLo{} to \rgSkewStrHi{}, kurtosis scales from \rgKurtStrLo{} to \rgKurtStrHi{} and concentration scale \rgImpStr{}.
 For each instance I solve the sparse relaxation at $d=2$ (the dense one for $n\le10$) and run 100 SLSQP starts drawn i.i.d.\ on the budget set.
 The reference optimum $f_{\mathrm{cert}}$ is the certified point when there is one, and the best of 100 runs otherwise.
 A search with $K$ starts fails when its best value exceeds $f_{\mathrm{cert}}$ by more than $\max(10^{-6},10^{-4}|f_{\mathrm{cert}}|)$.
@@ -167,6 +251,9 @@ In the default regime it is \aMultiCalFour{} at $n=4$, \aMultiCalFifteen{} at $n
 
 The probability that one start fails grows with $n$ in all regimes (Table~\ref{tab:A}).
 In the default regime it is \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
+A start fails when it ends above the reference optimum by more than $\max(10^{-6},10^{-4}|f_{\mathrm{cert}}|)$.
+Read \aPfCalFifty{} as: of 100 random starts, about \aPfCalFiftyHundred{} end in a worse point (the mean over the 50 instances of that cell).
+Lower is better; 0 means that every start finds the optimum.
 
 More starts help without closing the gap (Figure~\ref{fig:A}).
 In the default regime at $n=50$, the best of one start fails in \aFOneCalFifty{} of the instances and the best of 100 in \aFHundredCalFifty{}.
@@ -189,6 +276,7 @@ I did not test why local minima multiply with $n$.
 \input{tab_A.tex}
 
 The relaxation certifies all but \aUncert{} of the \aN{} instances, but unevenly: \aCalFiftyCert{} in the default regime at $n=50$.
+Certified means that a feasible point has a value within $\max(10^{-6},10^{-4}|\lb|)$ of the bound, to solver accuracy (Appendix~\ref{app:voc}).
 \aInacc{} sparse solves return an inaccurate status.
 I also solved the dense relaxation on \aDDn{} instances.
 The difference $\lb^{\mathrm{dense}}-\lb^{\mathrm{sparse}}$ has median \aDDmed{}.
@@ -231,20 +319,21 @@ The ball formulation minimises $f(x;\hat\kappa)+\delta\,\|Wz(x)\|_2$, where $z(x
 It is the worst case over a Frobenius ball of radius $\delta$ around $\hat\kappa$.
 It is parametric robustness; it is not the moment-uncertainty set of Delage and Ye \cite{delage2010}.
 I draw four markets ($n=6,10$; mixed and stress regimes).
-I perturb the true coefficient vector with an error of relative size $\rho\in\{0.05,0.1,0.2,0.5\}$, with \bDraws{} draws per market and $\rho$.
+I perturb the true coefficient vector $\theta$ with an error $\varepsilon$ of fixed relative size $\rho=\|\varepsilon\|_W/\|\theta\|_W\in\{0.05,0.1,0.2,0.5\}$, with \bDraws{} draws per market and $\rho$: at $\rho=0.5$ the estimate is off by half the size of the truth.
 I compare four methods.
 The nominal problem has $\delta=0$.
 The ball uses $\delta=\gamma\|\theta\|_W$ for six values of $\gamma$.
 The automatic rule sets $\delta=c\hat\sigma$ from a bootstrap of $T=20$ synthetic observations.
-Shrinkage moves $\hat\kappa$ towards a structured target.
-The metric is the true regret $f(\hat x;\kappa)-f(x^\star;\kappa)$.
+Shrinkage with intensity $s\in[0,1]$ replaces $\hat\kappa$ by $(1-s)\hat\kappa+s\,\kappa_{\mathrm{target}}$, where the target has one diagonal value and one off-diagonal value, each the mean of the estimates.
+The metric is the true regret $f(\hat x;\kappa)-f(x^\star;\kappa)$: the extra risk, in the units of $f$, that the portfolio chosen with the noisy coefficients carries when judged with the true ones.
+It is never negative; smaller is better, and a ratio to the nominal regret below 1 means the method helps.
 
 \emph{Expected.}
 I expected the ball to lower the regret when $\rho$ is large and to cost little when $\rho$ is small.
 
 \emph{Observed.}
 On the 10-asset mixed market the ball is worse than nominal for $\rho\le0.2$, and the loss grows with $\delta$ (Figure~\ref{fig:B}, Table~\ref{tab:B}).
-At $\rho=0.05$ the mean regret is \bTenANom{} for nominal and \bTenARob{} for $\gamma=0.1$.
+At $\rho=0.05$ the mean regret is \bTenANom{} for nominal and \bTenARob{} for $\gamma=0.1$, that is, the ball multiplies the regret by \bRatioRobA{}.
 
 At $\rho=0.5$ the ball with $\gamma\le0.1$ lowers the mean regret by 2 to 5\%, and the bootstrap intervals exclude zero.
 At $\gamma=0.2$ the difference is not distinguishable from zero, and with $\gamma\ge0.5$ the ball is worse again.
@@ -270,13 +359,22 @@ I did not test this explanation, and the markets are synthetic.
 \end{figure}
 
 \subsection{Experiment C: real data}\label{sec:C}
-The data are Yahoo Finance adjusted closes for 37 large US stocks in 9 sectors, 2009--2025, fixed ex post.
-This introduces survivorship bias.
-I rebalance monthly from 2015 to 2025 (\cDates{} dates) with a 756-day window, long-only weights capped at 0.25, and costs of 5 and 10 bp.
-Universe U10 has ten assets and the dense model.
-Universe U37 has all 37 assets and the sector model.
+The data are Yahoo Finance adjusted closes for 37 large US stocks in 9 sectors of the GICS classification, 2009--2025, fixed ex post.
+The list is today's large caps, so stocks that fell out of the index are absent: this is survivorship bias, and it flatters every strategy.
+The study is walk-forward.
+On the first trading day of each month from 2015 to 2025 (\cDates{} dates) each strategy estimates its inputs on the previous 756 trading days, about three years, and sets weights.
+The weights then drift until the next date.
+Weights are long-only with a cap of 0.25, so that no stock exceeds a quarter of the portfolio; the cap was chosen for the conditioning of the SDP, not for finance (Appendix~\ref{app:repro}).
+It applies to the minimum-variance, minimum-CVaR and polynomial strategies; 1/N, ERC and HRP are not capped.
+Costs are 5 or 10 basis points (1 bp $=10^{-4}$) per unit of traded notional; Appendix~\ref{app:ind} defines turnover.
+Universe U10 has ten stocks, the first two of each of the first five sectors, and the full (dense) polynomial model; the protocol calls this variant V1.
+Universe U37 has all 37 stocks and the sector model, which keeps only co-moments between stocks of the same sector (variant V2).
+In the model $F=\ell_2m_2-\ell_3m_3+\ell_4m_4$ of Section~\ref{sec:model}, the scale $\ell_k=w_k/\overline{|m_k(e_i)|}$ makes each term worth $w_k$ on a portfolio holding a single stock $e_i$, on average over the stocks.
+I fix $(w_2,w_3)=(1,1)$ and let $w_4\in\{0,1,3\}$ be the weight of the fourth moment; $w_4=1$ is the reference value fixed before the runs.
+Returns are first rescaled so that the average stock volatility is one.
 The protocol was frozen before any run, with three amendments made before the evaluation period (Appendix~\ref{app:repro}).
-Comparators are equal weights, Ledoit--Wolf minimum variance \cite{ledoit2004}, equal risk contribution, hierarchical risk parity \cite{lopezdeprado2016} and minimum CVaR \cite{rockafellar2000}.
+Indicators are defined once in Appendix~\ref{app:ind}; the rule for reading each is given where the result appears.
+Comparators are equal weights, Ledoit--Wolf minimum variance \cite{ledoit2004}, equal risk contribution (ERC), hierarchical risk parity (HRP) \cite{lopezdeprado2016} and minimum CVaR \cite{rockafellar2000}; Appendix~\ref{app:ref} says what each optimises.
 
 \emph{Expected.}
 Third and fourth sample co-moments are noisy on 756 days.
@@ -288,10 +386,16 @@ On U37 the local solver is suboptimal by more than $10^{-4}$ in relative terms o
 Every SOS solve is certified.
 
 Out of sample the picture is flat (Table~\ref{tab:C}, Figure~\ref{fig:C}).
+The net return of a strategy is its mean daily return after costs, times 252; higher is better.
+Across the \mNStrat{} strategies of U37 it runs from \mNetMin{}\% to \mNetMax{}\% a year, and equal weights earn \mNetEw{}\%.
+A difference between two strategies comes with a 95\% interval from a block bootstrap (Appendix~\ref{app:voc}); if the interval contains zero, the data do not separate the two.
 All \cTests{} net-return intervals contain zero.
-The Sharpe-ratio test gives $p$ between \cPMin{} and \cPMax{} (Appendix~\ref{app:tests}, uncorrected).
+For U10 against equal weights, the net-return difference is \cTenEwNet{} points a year, with interval \cTenEwNetLo{} to \cTenEwNetHi{}, on a base of \mTenNetEw{}\%.
+The Sharpe-ratio test gives $p$ between \cPMin{} and \cPMax{} (Appendix~\ref{app:tests}, uncorrected); a $p$ above 0.05 means that a difference this large would arise by chance more than one time in twenty if the two Sharpe ratios were equal.
 
 On risk, the picture depends on the baseline.
+Volatility is the annualised standard deviation of daily returns, and CVaR is the mean loss on the worst 5\% of days; for both, lower is better.
+Equal weights have a volatility of \mTenVolEw{}\% on U10, so a difference of one point is about \mTenVolOnePt{}\% of the base.
 With $w_4=1$ the U10 model has lower volatility than equal weights, by \cTenEwVol{} points (interval \cTenEwVolLo{} to \cTenEwVolHi{}).
 It has higher volatility and CVaR than minimum variance and minimum CVaR.
 
@@ -301,7 +405,9 @@ Its volatility differs by \cSecLocVol{} points (\cSecLocVolLo{} to \cSecLocVolHi
 The price of sparsity is large in model terms.
 The full-model objective at the sector solution is \cSpSecOne{} on average against \cSpFullOne{} at the full-model local solution ($w_4=1$).
 It is worse on \cSpWorseOne{} of the dates.
+The objective is dimensionless (each term is scaled by $\ell_k$), so only the ratio between the two means is informative.
 
+Time is the wall-clock time per monthly rebalance.
 The SOS solve takes \cTimeTen{} s per rebalance on U10 and \cTimeSector{} s on U37, against \cTimeLocal{} s for the local solve of the sector model.
 These are wall times with six concurrent workers and are indicative only.
 
@@ -411,11 +517,102 @@ The test therefore allows $+10^{-8}$ (bound above the optimum) and $-5\times10^{
 \section{Reproduction}\label{app:repro}
 Software: Python \verPython{}, CVXPY \verCvxpy{}, CLARABEL \verClarabel{}, NumPy \verNumpy{}, SciPy \verScipy{}, pandas \verPandas{}.
 Machine: \cpuModel{}, \cpuThreads{} threads; experiments used six single-threaded workers.
-The package installs with \texttt{pip install -e .}; tests run with \texttt{pytest -m "not slow"}.
+Exact versions are pinned in \texttt{requirements.lock}; the package installs with \texttt{pip install --no-deps -e .} and the fast tests run with \texttt{pytest -m "not slow"}.
 Experiment protocols are in \texttt{experiments/PROTOCOL*.md}, written before the runs.
 Protocol~C has three amendments, all made before the evaluation period: a weight cap of 0.25 in place of 1 for conditioning, an asset-level normalisation of the moment weights, and a cap of 64 on atom combinations in the extraction (disjoint sector cliques otherwise gave about $2\times10^6$ candidates).
 Experiments: \texttt{experiments/exp\_a\_local\_vs\_global.py}, \texttt{exp\_b\_robust.py}, \texttt{exp\_c\_real\_data.py}, each followed by its \texttt{summarize\_*.py}.
 The prices come from \texttt{scripts/download\_data.py}.
 All numbers and tables of this paper are generated by \texttt{scripts/make\_paper\_numbers.py} from \texttt{results/}.
 Experiment~C took about \cWallHours{} hours on six workers (the sum of the strategy times in \texttt{results/exp\_c\_alloc.jsonl}, divided by six).
+
+\section{Indicators}\label{app:ind}
+Table~\ref{tab:ind} gives each indicator as implemented in \texttt{empirical.py} and \texttt{summarize\_exp\_c.py}.
+$g_t$ is the gross daily simple return of the portfolio after drift, and $n_t$ the net return, $g_t$ minus the cost of the trades made that day.
+The orders of magnitude are the \mNStrat{} strategies of U37 in Table~\ref{tab:C}, over \uEval{} evaluation days.
+\begin{table}[t]
+\centering\scriptsize
+\caption{Indicators: formula as implemented, unit and direction, measured range, limit of interpretation.}\label{tab:ind}
+\begin{tabular}{p{1.8cm}p{4.3cm}p{2.5cm}p{2.1cm}p{3.4cm}}
+\toprule
+Indicator & Formula & Unit; better is & Measured (U37) & Limit\\
+\midrule
+Annualised volatility & $\sqrt{252}\,\mathrm{sd}(g_t)$, sd with $T-1$ & fraction a year (\% in tables); lower & \mVolMin{}--\mVolMax{}\%; equal weights \mVolEw{}\% & gains and losses count alike; $\sqrt{252}$ assumes independent days\\
+CVaR at 5\% & $-\overline{g_t}$ over the days with $g_t\le q$; $q$ is the 5\% quantile of $g$ (linear interpolation) & daily loss, positive; lower & \mCvarMin{}--\mCvarMax{}\% a day & rests on about \uTail{} days out of \uEval{}\\
+Maximum drawdown & $\max_t\big(\max_{u\le t}C_u-C_t\big)$ with $C_t=\sum_{u\le t}n_t$ & fraction of initial wealth; lower & \mDdMin{}--\mDdMax{}\% & sums returns, does not compound; measured from the peak in return units, not in \% of the peak; one path\\
+Skewness & $\frac1T\sum_t z_t^3$, $z_t=(g_t-\bar g)/\mathrm{sd}(g)$ & none; higher & \mSkewMin{} to \mSkewMax{} & a few days dominate it\\
+Turnover & mean over rebalances after the first of $\sum_i|x_i-w_i|$, $w$ the drifted weights & share of wealth, buys and sells both counted; lower & \mTurnMin{}--\mTurnMax{}; equal weights \mTurnEw{} & cost assumed linear in the traded amount; no market impact\\
+Net return & $252\,\overline{n_t}$; $n_t=g_t-c\sum_i|x_i-w_i|$ on a rebalance day, $g_t$ otherwise; $c=5$ or $10$ bp & fraction a year; higher & \mNetMin{}--\mNetMax{}\% & the polynomial has no return term, so no strategy here optimises it\\
+Sharpe ratio & $\sqrt{252}\,\bar n/\mathrm{sd}(n)$; risk-free rate zero & none; higher & \mSharpeMin{}--\mSharpeMax{} & ignores the return on cash; one noisy estimate\\
+Effective number of assets & $1/\sum_ix_i^2$, mean over rebalances & between 1 and $n$; higher is more spread & \mEffNMin{}--\mEffNMax{} & looks at weights, not correlations\\
+Regret (Exp.~B) & $f(\hat x;\kappa)-f(x^\star;\kappa)$ & units of $f$, $\ge0$; lower & \bTenANom{} for nominal, 10 assets, $\rho=0.05$ & depends on the scale of $f$; compare ratios\\
+Single-start failure (Exp.~A) & share of the \rgStarts{} local runs ending more than $\tau$ above the reference & probability; lower & \aPfCalFifteen{} at $n=15$ (default regime) & depends on how starts are drawn\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Toy example.}
+Table~\ref{tab:G} has three assets and five days.
+Weights are $1/3$ and are reset every day, and the cost is $c=10$ bp.
+The script \texttt{scripts/toy\_example.py} computes the numbers below with the code of the experiments, and \texttt{tests/test\_metric\_definitions.py} checks them against values worked out by hand to $10^{-12}$.
+\input{tab_G.tex}
+On day 2 the gross return is $(-2-4+3)/3=-1\%$.
+After day 1 the portfolio has drifted; going back to $1/3$ trades $\sum_i|1/3-\tfrac13(1+r_i)/(1+g)|=\tfrac13(0.04)/1.02=0.0131$ of wealth on day 2, which costs $0.001\times0.0131$.
+The mean of the five gross returns is \toyMeanG{}\%, their variance with $T-1=4$ is \toyVarG{} and their standard deviation \toySdG{}\%.
+The annualised volatility is $\toySdG{}\%\times\sqrt{252}$, which is \toyVolPct{}\% (the toy returns are far larger than real ones).
+The 5\% quantile of five values lies one fifth of the way from the worst to the second worst, at \toyQ{}\%.
+Only the worst day, \toyWorst{}\%, is below it, so the CVaR is \toyCvarPct{}\%: with five days the 5\% tail is the worst day.
+The cumulative sum of net returns peaks on day 3 and is lower by \toyDd{} on day 4, which is the maximum drawdown.
+The skewness is \toySkew{}, the annualised net return \toyRet{} and the Sharpe ratio \toySharpe{}.
+The mean turnover over the four later days is \toyTurn{}.
+With weights $(0.5,0.25,0.25)$ the effective number of assets is $1/0.375=\toyEffUneven{}$, against 3 for equal weights.
+
+\section{Comparison strategies}\label{app:ref}
+All five use returns only, as the polynomial does, and none forecasts the mean.
+They span the range from no estimation to tail-risk optimisation.
+\paragraph{Equal weights (1/N).}
+Each of the $n$ stocks gets $1/n$.
+It optimises nothing and assumes nothing about the moments.
+It is the reference of DeMiguel et al.\ \cite{demiguel2009}: an estimated rule that cannot beat it has no use for its estimates.
+\paragraph{Minimum variance with Ledoit--Wolf.}
+It minimises $x^\top\hat\Sigma x$ on the long-only budget set with the cap, where $\hat\Sigma$ is the Ledoit--Wolf estimate.
+Ledoit--Wolf shrinkage averages the sample covariance with a multiple of the identity, with an intensity computed from the data to cut estimation error \cite{ledoit2004}.
+It assumes that variance is the risk.
+It is the reference for the second-moment part of the polynomial.
+\paragraph{Equal risk contribution (ERC).}
+It sets weights so that each stock contributes the same share of portfolio variance, $x_i(\hat\Sigma x)_i$ equal across $i$.
+The code solves $\min\ \tfrac12y^\top\hat\Sigma y-\tfrac1n\sum_i\log y_i$ and normalises $y$.
+It lies between equal weights and minimum variance, and it has no cap.
+\paragraph{Hierarchical risk parity (HRP).}
+It follows L\'opez de Prado \cite{lopezdeprado2016}.
+It clusters the stocks on the distance $\sqrt{(1-\mathrm{corr}_{ij})/2}$ with single linkage, orders them by the dendrogram, then splits the list in two and gives each half a share inversely proportional to its variance, recursively.
+It needs no matrix inversion, uses the sample covariance and has no cap.
+It serves as a reference that is robust to estimation error.
+\paragraph{Minimum CVaR.}
+It minimises the mean loss on the worst 5\% of the 756 days of the window, as the linear program of Rockafellar and Uryasev \cite{rockafellar2000}: minimise $z+\frac1{(1-0.95)T}\sum_tu_t$ with $u_t\ge-r_t^\top x-z$, $u_t\ge0$, on the capped budget set.
+It uses the empirical distribution and no model.
+It is the closest competitor to a tail-risk polynomial, since both target the tails.
+
+\section{Vocabulary}\label{app:voc}
+\paragraph{Statistics.}
+\emph{In-sample} is the window used to estimate; \emph{out-of-sample} is the later period on which the result is judged.
+A \emph{backtest} replays a strategy on past data.
+\emph{Look-ahead} is the use of information not available at the decision date; here each window ends the day before the rebalance.
+\emph{Overfitting} is a rule that fits the noise of its estimation window.
+\emph{Survivorship bias} is the absence of stocks that failed.
+A \emph{rolling window} moves forward with the decision date.
+The \emph{95\% interval} of a difference is the range from the 2.5th to the 97.5th percentile of the difference over 2000 resamples of the evaluation days.
+The resampling is a \emph{circular block bootstrap}: it draws blocks of 21 consecutive days, to keep the dependence between neighbouring days.
+A \emph{$p$-value} is the probability, if the null hypothesis were true, of a statistic at least as extreme as the one observed; the Sharpe test uses blocks of 5 days and 2000 resamples.
+With \emph{multiple comparisons}, the chance that some interval excludes zero grows with their number.
+For \cTests{} independent comparisons at 5\% one expects \cExpectedChance{} such intervals by chance alone; the comparisons here are dependent, and no correction is applied.
+\paragraph{Optimisation.}
+A \emph{local minimum} is a point no feasible neighbour improves; a \emph{global minimum} is the best feasible point.
+A local solver stops at the first local minimum it reaches.
+\emph{Multi-start} runs it from many random points and keeps the best; it gives no proof.
+A \emph{relaxation} replaces the problem by an easier one whose feasible set is larger, so its optimum $\lb$ is a lower \emph{bound}: no feasible point has a smaller value.
+A \emph{certificate} is a feasible point $\hat x$ with $f(\hat x)-\lb\le\max(10^{-6},10^{-4}|\lb|)$.
+Then $\hat x$ is $\varepsilon$-optimal: within $\varepsilon$ of the global minimum, $\varepsilon$ being that tolerance.
+The \emph{solver tolerance} is the accuracy at which an interior-point method stops; such a method follows a path through the interior of the feasible cone.
+``Certified'' therefore means certified to the precision of the solver (Appendix~\ref{app:acc}), not exactly.
+\emph{SDP} (semidefinite program) is optimisation over matrices constrained to be positive semidefinite.
 \end{document}
