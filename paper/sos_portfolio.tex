@@ -127,7 +127,7 @@ Sparse bound equals dense bound & Theorem~7 of version 1 & Version 1: $\vOneSpar
 Local search is enough in the default regime & Protocol of Exp.~A & Several local minima in \aMultiCalFifteen{} of default-regime instances at $n=15$ and \aMultiCalFifty{} at $n=50$; one start fails with probability \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$ & Not held & The number of local minima grows with $n$; I did not test why\\
 Order-2 certificate in most cases & Tightness of low orders & All but \aUncert{} of \aN{} instances certified; \aCalFiftyCert{} for the default regime at $n=50$ & Held, except at large $n$ & \aInacc{} solves return an inaccurate status\\
 Flat extension at $d=2$ certifies & Version 1 & Flat in all but \aNotFlat{} instances; at $d=3$ on the non-convex pair the ranks are $\ncRankDThree$ and $\ncRankDThreePrev$ with the same bound & Unstable & The solver may return a point inside the optimal face; not tested\\
-Size reduction of 398 at $n=50$ & Version 1 table & \cxPsdStar{} and \cxPsdChain{} (PSD entries), \cxMomStar{} and \cxMomChain{} (moments), for star and chain & Corrected & Version 1 compared two different metrics\\
+Size reduction of 398 at $n=50$ & Version 1 table & \cxPsdStar{} and \cxPsdChain{} (PSD entries), \cxMomStar{} and \cxMomChain{} (moments), for star and chain & Corrected & Version 1 counted moment-matrix entries only\\
 Dense SDP unaffordable at $n=50$ & ``$>60$ h'' in version 1 & Measured: \dbFifteenTime{} s and \dbFifteenMem{} GB at $n=15$. Extrapolated, not measured: \dbExtTimeFifty{} s at $n=50$ & Not tested & Extrapolation from five points\\
 SDP faster than local search & Cost of one solve & At $n=50$ in the default regime, \aTimeSosCal{} s against \aTimeLocCal{} s for 100 local runs & Not held & The sparse SDP still has blocks of size up to \cxBlockStar{}\\
 Ball formulation helps under kurtosis error & Experiment~B design & Worse than nominal for $\rho\le0.2$; 5\% better at $\rho=0.5$ with $\gamma=0.1$ & Not held & The ball adds a bias proportional to $\delta$; not otherwise tested\\
@@ -215,12 +215,14 @@ Its interval at $n=50$ spans \dbExtTimeLoFifty{} to \dbExtTimeHiFifty{} s, and I
 Take $n=50$ with ten cliques of five assets.
 The total number of PSD entries falls by a factor of \cxPsdStar{} (star budget) to \cxPsdChain{} (chain).
 The number of free moments falls by \cxMomStar{} to \cxMomChain{}.
-The sparse solves take \cxTimeChain{} to \cxTimeStar{} s.
+For one instance (seed 0, default parameters, ten cliques of five assets) run alone, the sparse solve takes \cxTimeChain{} s (chain) or \cxTimeStar{} s (star).
+In Experiment~A the median at $n=50$ in the default regime is \aTimeSosCal{} s (star budget, six concurrent workers, build included).
 
-Version 1 reported 398 by counting only moment blocks.
-It left out the localising matrices and the budget clique, which it did not impose.
+Version 1 reported 398, which is $\vDenseEntries/\vSparseEntries$: the entries of the dense moment matrix over the entries of the ten clique moment matrices.
+It counted no localising matrix and no budget clique, since it did not impose the budget pointwise.
 The same moment-block metric on the corrected relaxation gives \cxBlkStar{} (star) and \cxBlkChain{} (chain).
-Version 1 also reported 1.85 s for the solve.
+In another row of the same tables ($n=15$) it compared dense matrix entries with sparse free moments.
+Version 1 also reported 1.85 s for the solve, on a smaller problem: \vSparseMom{} free moments against \cxUniqStar{} now (star budget).
 
 \subsection{Experiment B: estimation error on the kurtosis coefficients}
 The ball formulation minimises $f(x;\hat\kappa)+\delta\,\|Wz(x)\|_2$, where $z(x)$ stacks the monomials $x_i^4$ and $x_i^2x_j^2$ and $W$ weights the off-diagonal entries by $\sqrt2$.
@@ -353,7 +355,7 @@ Claim in version 1 & Measured & Status\\
 2-asset benchmark is non-convex & Smallest Hessian eigenvalue on $K$: $+\tHess$; one local minimum & Refuted\\
 Default instances show the value of global search & Sparse bound, dense bound and local value coincide on the five default instances; one local minimum each & Refuted\\
 Sparse bound equals dense bound & Instance $(6,2,0)$, skew 2: $\vOneSparse$ against $\vOneDense$; instance $(6,2,1)$, skew 4: $\vTwoSparse$ against $\vTwoDense$. Cause: budget imposed on $E[\sum x]$ & Refuted, fixed\\
-398-fold reduction at $n=50$ & $\vRatioPsd$ counts moment blocks only and leaves out the budget clique and the localising matrices; free moments give $\vRatioMom$; metrics differed between rows & Corrected\\
+398-fold reduction at $n=50$ & $\vRatioPsd=\vDenseEntries/\vSparseEntries$ compares the entries of the dense moment matrix with those of the ten clique moment matrices, without localising matrices or budget clique; free moments give $\vRatioMom$; the row $n=15$ mixed matrix entries with free moments & Corrected\\
 Dense solve $>60$ s ($n=15$) and $>60$ h ($n=50$) & Not SDP timings: they came from the scalar-loop builder & Unsupported\\
 Extraction for rank above one & Random combination with non-orthogonal eigenvectors, atoms merged by position & Rewritten\\
 Local solver returns a feasible bound & Scaling projection, success flag always true & Rewritten\\
@@ -413,5 +415,5 @@ Protocol~C has three amendments, all made before the evaluation period: a weight
 Experiments: \texttt{experiments/exp\_a\_local\_vs\_global.py}, \texttt{exp\_b\_robust.py}, \texttt{exp\_c\_real\_data.py}, each followed by its \texttt{summarize\_*.py}.
 The prices come from \texttt{scripts/download\_data.py}.
 All numbers and tables of this paper are generated by \texttt{scripts/make\_paper\_numbers.py} from \texttt{results/}.
-Experiment~C ran for about two hours on six workers.
+Experiment~C took about \cWallHours{} hours on six workers (the sum of the strategy times in \texttt{results/exp\_c\_alloc.jsonl}, divided by six).
 \end{document}

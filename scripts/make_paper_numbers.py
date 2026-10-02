@@ -112,6 +112,7 @@ for b, w in (("star", "Star"), ("chain", "Chain")):
     put(f"cxMom{w}", f"{d50.unique_moments / s.unique_moments:.0f}")
     put(f"cxBlk{w}", f"{d50.moment_block_entries / s.moment_block_entries:.0f}")
     put(f"cxTime{w}", f"{s.wall_s:.0f}")
+    put(f"cxUniq{w}", f"{int(s.unique_moments):,}".replace(",", "\\,"))
     put(f"cxBlock{w}", int(s.max_block))
 put("cxBlockDense", int(d50.max_block))
 rf = json.load(open(os.path.join(RES, "review_findings_v1.json")))
@@ -120,8 +121,13 @@ put("vOneSparse", num(float(rfd[("E3", "(6, 2, 0, 2.0) sparse lb")]), 1))
 put("vOneDense", num(float(rfd[("E3", "(6, 2, 0, 2.0) dense lb")]), 2))
 put("vTwoSparse", num(float(rfd[("E3", "(6, 2, 1, 4.0) sparse lb")]), 0))
 put("vTwoDense", num(float(rfd[("E3", "(6, 2, 1, 4.0) dense lb")]), 1))
-put("vRatioPsd", f"{1758276 / 4410:.0f}")
-put("vRatioMom", f"{316251 / 1251:.0f}")
+dE, sE = int(rfd[("E4", "n=50 dense PSD entries")]), int(rfd[("E4", "n=50 sparse PSD entries")])
+dM, sM = int(rfd[("E4", "n=50 dense unique moments")]), int(rfd[("E4", "n=50 sparse unique moments")])
+put("vDenseEntries", f"{dE:,}".replace(",", "\\,"))
+put("vSparseEntries", f"{sE:,}".replace(",", "\\,"))
+put("vRatioPsd", f"{dE / sE:.0f}")
+put("vRatioMom", f"{dM / sM:.0f}")
+put("vSparseMom", f"{sM:,}".replace(",", "\\,"))
 
 # experiment B
 b = pd.read_csv(os.path.join(RES, "exp_b.csv"))
@@ -160,6 +166,7 @@ ct = pd.read_csv(os.path.join(RES, "exp_c_tests.csv"))
 cmod = pd.read_csv(os.path.join(RES, "exp_c_model.csv"))
 rows = [json.loads(l) for l in open(os.path.join(RES, "exp_c_alloc.jsonl"))]
 put("cDates", len(rows))
+put("cWallHours", f"{sum(v['time'] for r in rows for u in ('U10', 'U37') for v in r[u].values() if isinstance(v, dict) and 'time' in v) / 3600 / 6:.1f}")
 for w, k in ((0, "Zero"), (1, "One"), (3, "Three")):
     r = cmod[(cmod.universe == "U37") & (cmod.model == f"Poly_sector_w4={w}")].iloc[0]
     put(f"cSub{k}", pct(r["frac_local_suboptimal(>1e-4 rel)"]))
@@ -298,7 +305,7 @@ table("Experiment A, selected cells. Multi-min: share of instances with several 
       "probability that one start misses the reference optimum; fail $K$: share of instances where the best of $K$ starts misses it "
       "(``cert.'': among the instances whose reference is the certified point); uncert.: share of instances that are not certified at $d=2$, "
       "where the reference is the best of 100 runs and the 100-start failure is false by construction; times are medians of the sparse SDP "
-      "and of 100 local runs, in seconds. The full grid is in \\texttt{results/exp\\_a\\_summary.md}.",
+      "(star budget, build included) and of 100 local runs, in seconds, with six concurrent workers. The full grid is in \\texttt{results/exp\\_a\\_summary.md}.",
       "tab:A", "regime & $n$ & inst. & multi-min & $p_1$ & fail 1 & fail 100 & fail 100 cert. & uncert. & SDP (s) & 100 local (s)", rowsA, "lrrrrrrrrrr")
 
 # Table B

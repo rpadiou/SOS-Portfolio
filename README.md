@@ -26,7 +26,7 @@ Generated from `results/` by `scripts/make_readme_tables.py`. Details, intervals
 |---|---|---|
 | A, 1760 synthetic instances | probability that one local start misses the global optimum, default regime | 0.30 at n=15, 0.83 at n=50 |
 | A | order-2 relaxation certifies the optimum, to solver accuracy | all but 29 of 1760 (default regime, n=50: 74%) |
-| A | sparse SDP against 100 local runs, n=50, default regime | 80 s against 33 s |
+| A | sparse SDP against 100 local runs, n=50, default regime (median of 50 instances, six concurrent workers) | 80 s against 33 s |
 | size, n=50 | dense over sparse PSD entries (v1 claimed 398) | 128 to 215 |
 | B, kurtosis estimation error | ball formulation against nominal, 10 assets | worse for rho <= 0.2, 2 to 5% better at rho = 0.5 (gamma <= 0.1) |
 | B | shrinkage at rho = 0.5, regret over nominal | 0.21 |
@@ -57,8 +57,8 @@ python scripts/make_paper_numbers.py && python paper/generate_figures.py && (cd 
 ```
 
 Experiment C needs `data/raw/prices.parquet`, which is not versioned; `data/manifest.json` records the file used (tickers, dates, SHA-256).
-A new download can give a different hash if Yahoo has revised the adjusted prices.
-Experiment C takes about two hours on six workers.
+A new download can give a different hash if Yahoo has revised the adjusted prices, and the results of experiment C can then differ slightly.
+Experiment C takes a few hours on six workers; the per-strategy times are in `results/exp_c_alloc.jsonl`.
 
 ## Layout
 
