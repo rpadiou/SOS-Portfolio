@@ -121,5 +121,9 @@ The ball is on the coefficients of the modelled kurtosis monomials (`||Delta kap
 `W` = 1 on diagonals, `sqrt(2)` off-diagonals (kappa symmetric). In the relaxation,
 `z(x)` is replaced by the moments `y`; for a Dirac measure this is exact and in general
 `||E z|| <= E||z||`, so the bound is that of the moment-relaxed robust problem.
+There is no a posteriori certificate with the ball formulation: `certify` and `polish` assume a
+polynomial objective, and the objective here, `f + delta ||W z||`, is not one. The test would be
+`f(x_hat) + delta ||W z(x_hat)|| - lambda <= eps`; it is not implemented, and `main.py` says so.
+
 This is parametric robustness; it is not the Delage-Ye moment-uncertainty set on the
 return distribution.
