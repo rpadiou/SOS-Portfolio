@@ -16,6 +16,19 @@ A constraint whose support is not contained in its clique raises `ValueError`.
 v1.0 instead skipped such constraints and replaced the budget by a constraint on
 `E[sum x]`, which decoupled the cliques (finding E3).
 
+## Sparse bound against dense bound
+
+At equal order and without the ball constraint, `lb_sparse <= lb_dense` for the star and chain budgets
+(proof sketch in the docstring of `build_portfolio_relaxation`, numerical check in
+`tests/regression/test_sparse_lifting.py`). The five instances of experiment A where the gap exceeds
+1e-3 (`scripts/check_sparse_gap.py`, `results/sparse_gap.csv`) all have two cliques; for the three
+4-asset ones the order-3 bounds agree, and the ball constraint changes nothing. This is measured,
+not proved: the missing cross-clique moments at order 2 are the likely cause, and order 3 was not run
+for the two 8-asset instances.
+
+With overlapping cliques the budget clique closes a cycle and the running intersection property
+fails; the builder warns. The relaxation stays valid.
+
 ## Why the budget needs auxiliary variables
 
 `b_lo <= sum_i x_i <= b_hi` involves every variable, so it is supported in no

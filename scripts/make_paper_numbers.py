@@ -242,6 +242,13 @@ put("smN", len(sm))
 put("smMax", sci(sm.lb_minus_fstar_tight.max()))
 put("smMin", sci(sm.lb_minus_fstar_tight.min()))
 
+# sparse versus dense gap on the five instances of experiment A
+sg = pd.read_csv(os.path.join(RES, "sparse_gap.csv"))
+put("sgN", len(sg))
+put("sgDThreeMax", sci(sg.gap_d3.abs().max()))
+put("sgBallMax", sci((sg.sparse_d2_ball - sg.sparse_d2).abs().max()))
+put("sgDThreeN", int(sg.gap_d3.notna().sum()))
+
 # environment
 import platform
 from importlib import metadata

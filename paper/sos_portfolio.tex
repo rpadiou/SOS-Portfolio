@@ -85,7 +85,9 @@ Convergence at $d=2$ is not guaranteed.
 \paragraph{Correlative sparsity.}
 Let $I_1,\dots,I_m$ be the maximal cliques of a chordal extension of the interaction graph.
 The sparse relaxation uses one moment matrix per clique \cite{waki2006,lasserre2006}.
-Every sparse constraint is implied by the dense ones at the same order, so I expect $\lb^{\mathrm{sparse}}\le\lb^{\mathrm{dense}}$, and I test it.
+At equal order, $\lb^{\mathrm{sparse}}\le\lb^{\mathrm{dense}}$.
+Without the budget variables this is immediate, since each sparse block is a principal submatrix of a dense block.
+With the sector-sum variables of the next paragraph, substituting $s_k=\sum_{i\in O_k}x_i$ in a dense moment vector gives a sparse-feasible point with the same objective; a regression test checks it numerically.
 
 The budget $\mathbf 1^\top x\in[b_{\mathrm{lo}},b_{\mathrm{hi}}]$ involves every variable and belongs to no clique.
 Version 1 replaced it by a constraint on $E[\sum x]$, which decoupled the cliques.
@@ -186,7 +188,10 @@ The relaxation certifies all but \aUncert{} of the \aN{} instances, but unevenly
 I also solved the dense relaxation on \aDDn{} instances.
 The difference $\lb^{\mathrm{dense}}-\lb^{\mathrm{sparse}}$ has median \aDDmed{}.
 Only \aDDover{} instances exceed $10^{-3}$ (maximum \aDDmax).
-All five are non-certified instances with $n=4$ or $n=8$: there the sparse relaxation is weaker.
+All five are non-certified instances with $n=4$ or $n=8$, and all have two cliques.
+At order 3 the sparse and dense bounds of the \sgDThreeN{} four-asset instances agree to \sgDThreeMax{}, so the gap is specific to order 2.
+The per-clique ball constraint changes the sparse bound by at most \sgBallMax{}.
+I read the gap as the missing cross-clique moments at order 2 (measured for $n=4$; order 3 was not run for the 8-asset instances).
 The smallest difference is \aDDmin{}, which I take to be solver accuracy.
 Across all instances, the sparse bound exceeds the best local value by at most \aExcessMax{}, again the order of the solver tolerance.
 
