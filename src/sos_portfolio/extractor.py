@@ -8,7 +8,8 @@ share an orthonormal eigenbasis Q (real Schur form of a random combination); the
 i-th coordinate of the j-th atom is q_j^T N_i q_j.
 
 A flat extension is only a *secondary* certificate. The primary one is a posteriori:
-a feasible point x_hat with f(x_hat) - lambda_d <= eps (`certify`).
+a feasible point x_hat with f(x_hat) - lambda_d <= eps (`certify`). It holds to solver accuracy:
+lambda_d is the primal objective of the moment problem, not the dual objective.
 """
 
 from __future__ import annotations
@@ -165,6 +166,9 @@ def certify(f: MultivariatePolynomial, lower_bound: float, candidates: Sequence[
             b_lo: float, b_hi: float, eps_abs: float = 1e-6, eps_rel: float = 1e-6,
             feas_tol: float = 1e-8, polish_candidates: bool = True) -> Dict:
     """A posteriori global-optimality certificate: feasible x_hat with f(x_hat) - lb <= eps.
+
+    `lower_bound` is the primal objective returned by the solver, so the certificate holds to
+    solver accuracy (the value can exceed the true optimum by about the solver residuals).
 
     Candidates are first polished by a local solve (extraction from a solver-accuracy
     moment matrix is only accurate to ~1e-5); feasibility is checked on the final point.

@@ -7,7 +7,7 @@ The write-up is in [paper/sos_portfolio.pdf](paper/sos_portfolio.pdf).
 ## What it is
 
 - Order-2 relaxation of `min f(x)` on `{x >= 0, b_lo <= sum x <= b_hi}`, dense and sparse (cliques of the interaction graph).
-- An a posteriori certificate: a feasible point whose value is within a tolerance of the lower bound.
+- An a posteriori certificate: a feasible point whose value is within a tolerance of the lower bound. The bound is the primal objective of the moment problem, so the certificate holds to solver accuracy.
 - A multi-start local solver, for comparison.
 - Three experiments: A (local search against the relaxation, synthetic), B (estimation error on kurtosis coefficients),
   C (37 US stocks, walk-forward, 2015-2025).
@@ -25,7 +25,7 @@ Generated from `results/` by `scripts/make_readme_tables.py`. Details, intervals
 | experiment | measured | result |
 |---|---|---|
 | A, 1760 synthetic instances | one local start misses the global minimum | 45% (best of 100 starts: 0.5%) |
-| A | order-2 relaxation certifies the optimum | 98.4% (default regime, n=50: 74%) |
+| A | order-2 relaxation certifies the optimum, to solver accuracy | 98.4% (default regime, n=50: 74%) |
 | A | sparse SDP against 100 local runs, n=50, default regime | 80 s against 33 s |
 | size, n=50 | dense over sparse PSD entries (v1 claimed 398) | 128 to 215 |
 | B, kurtosis estimation error | ball formulation against nominal, 10 assets | worse for rho <= 0.2, 2 to 5% better at rho = 0.5 (gamma <= 0.1) |

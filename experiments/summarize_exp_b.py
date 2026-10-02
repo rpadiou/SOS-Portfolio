@@ -58,7 +58,7 @@ def main():
         out += [md(t), ""]
         chk = gm[gm["sdp_certified"].notna()]
         if len(chk):
-            out += [f"SDP check of local result (order 2, {len(chk)} solves): certified global in "
+            out += [f"SDP check of local result (order 2, {len(chk)} solves, to solver accuracy): certified global in "
                     f"{100 * chk['sdp_certified'].mean():.0f}% for the nominal problem, "
                     f"{100 * chk[chk.method != 'nominal']['sdp_certified'].mean():.0f}% for robust problems "
                     "(uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).", ""]

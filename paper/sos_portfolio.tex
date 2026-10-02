@@ -20,7 +20,7 @@
 
 \begin{abstract}
 I ask whether a certified global minimiser of a degree-4 portfolio risk polynomial is worth having.
-I solve the order-2 Lasserre relaxation, dense and with correlative sparsity, and certify a point a posteriori when its value matches the bound.
+I solve the order-2 Lasserre relaxation, dense and with correlative sparsity, and certify a point a posteriori when its value matches the bound, to solver accuracy.
 On \aN{} synthetic instances, one local start misses the global minimum in \aFailOne{} of the cases, and the relaxation certifies \aCert{} of them.
 On 37 US stocks (2015--2025), the certified minimiser lowers volatility and CVaR relative to equal weights, as any risk-minimising rule does.
 It is not better than Ledoit--Wolf minimum variance or minimum CVaR on those measures, and no net-return difference is distinguishable from zero.
@@ -33,7 +33,7 @@ The conclusions hold for one family of synthetic polynomials and one fixed unive
 Portfolio risk that accounts for skewness and kurtosis is a polynomial in the weights.
 With the first four moments the objective has degree four and is not convex in general.
 A local solver returns a stationary point.
-The Lasserre hierarchy \cite{lasserre2001} returns a lower bound, and a feasible point whose value is close to that bound is globally optimal.
+The Lasserre hierarchy \cite{lasserre2001} returns a lower bound, and a feasible point whose value is close to that bound is close to the global optimum, to solver accuracy.
 I ask what this certificate is worth on portfolio risk polynomials.
 
 I do three things.
@@ -99,6 +99,7 @@ After solving, I take candidate points from the Henrion--Lasserre extraction \ci
 I polish them with a local solve and check feasibility to $10^{-8}$.
 A point $\hat x$ is certified when $f(\hat x)-\lb\le\max(10^{-6},10^{-4}|\lb|)$.
 Since $\lb\le f^\star\le f(\hat x)$, this holds whatever the rank of the moment matrix.
+The reported bound is the primal objective of the moment problem, not the dual objective, so the statement holds to solver accuracy (Appendix~\ref{app:acc}).
 The flat-extension test of Curto and Fialkow \cite{curto2005} is reported as a secondary diagnostic.
 Solves use CLARABEL \cite{clarabel2024} through CVXPY \cite{cvxpy2016} with tolerance $10^{-7}$.
 The bound is only as accurate as the solver; Appendix~\ref{app:acc} measures the accuracy.

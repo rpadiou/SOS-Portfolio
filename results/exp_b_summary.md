@@ -59,7 +59,7 @@ Regret = f(x_hat; theta_true) - f(x*_true; theta_true); mean over 200 draws. `vs
 | 0.5 | shrink_s0.75 | 0.000 | 3.79e-06 | 3.51e-06 | -1.4e-05 [-1.5e-05, -1.3e-05] | 0.004 | 9.83 | 9.99e-04 |
 | 0.5 | shrink_s1.0 | 0.000 | 4.76e-06 | 4.46e-06 | -1.3e-05 [-1.5e-05, -1.2e-05] | 0.005 | 9.82 | 1.01e-03 |
 
-SDP check of local result (order 2, 280 solves): certified global in 100% for the nominal problem, 100% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
+SDP check of local result (order 2, 280 solves, to solver accuracy): certified global in 100% for the nominal problem, 100% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
 
 ## n10-stress-s1
 
@@ -118,7 +118,7 @@ SDP check of local result (order 2, 280 solves): certified global in 100% for th
 | 0.5 | shrink_s0.75 | 0.000 | 0.00e+00 | 0.00e+00 | -2.2e-02 [-3.6e-02, -9.3e-03] | 0.000 | 1.00 | 9.14e-01 |
 | 0.5 | shrink_s1.0 | 0.000 | 4.44e-18 | 0.00e+00 | -2.2e-02 [-3.6e-02, -9.3e-03] | 0.000 | 1.00 | 9.14e-01 |
 
-SDP check of local result (order 2, 280 solves): certified global in 65% for the nominal problem, 60% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
+SDP check of local result (order 2, 280 solves, to solver accuracy): certified global in 65% for the nominal problem, 60% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
 
 ## n6-mixed-s0
 
@@ -177,7 +177,7 @@ SDP check of local result (order 2, 280 solves): certified global in 65% for the
 | 0.5 | shrink_s0.75 | 0.000 | 1.60e-02 | 0.00e+00 | -5.8e-02 [-8.2e-02, -3.7e-02] | 0.010 | 1.01 | 1.09e+00 |
 | 0.5 | shrink_s1.0 | 0.000 | 1.77e-02 | 0.00e+00 | -5.7e-02 [-8.1e-02, -3.3e-02] | 0.011 | 1.01 | 1.09e+00 |
 
-SDP check of local result (order 2, 280 solves): certified global in 69% for the nominal problem, 63% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
+SDP check of local result (order 2, 280 solves, to solver accuracy): certified global in 69% for the nominal problem, 63% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
 
 ## n6-stress-s1
 
@@ -236,4 +236,4 @@ SDP check of local result (order 2, 280 solves): certified global in 69% for the
 | 0.5 | shrink_s0.75 | 0.000 | 0.00e+00 | 0.00e+00 | +0.0e+00 [+0.0e+00, +0.0e+00] | 0.000 | 1.00 | 6.34e-01 |
 | 0.5 | shrink_s1.0 | 0.000 | 0.00e+00 | 0.00e+00 | +0.0e+00 [+0.0e+00, +0.0e+00] | 0.000 | 1.00 | 6.34e-01 |
 
-SDP check of local result (order 2, 280 solves): certified global in 85% for the nominal problem, 83% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).
+SDP check of local result (order 2, 280 solves, to solver accuracy): certified global in 85% for the nominal problem, 83% for robust problems (uncertified robust cases reflect the relaxation gap ||E z|| <= E||z||, not necessarily local failure).

@@ -68,7 +68,8 @@ trustworthy with it.
 
 The primary certificate is a posteriori: a feasible `x_hat` with
 `f(x_hat) - lambda_d <= eps`. It holds whatever the numerical rank of the
-moment matrix. Candidates come from the extraction and from the first-order
+moment matrix, to solver accuracy: `lambda_d` is the primal objective of the moment problem
+returned by the solver, not the dual objective (see the appendix of the paper). Candidates come from the extraction and from the first-order
 moments, and are polished by a local solve (extraction from a solver-accuracy
 moment matrix is accurate to ~1e-5 only). The local best is not a candidate: the
 certificate must originate from the moments.

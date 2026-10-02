@@ -46,7 +46,7 @@ def report(f, pr, n, b_lo, b_hi, solver, starts, robust=False):
     pts = ex.extract()
     cand = ([] if pts["points"] is None else list(pts["points"])) + [ex.mean_point()]
     c = certify(f, lb, cand, b_lo, b_hi)
-    print(f"a posteriori certificate: certified={c['certified']} gap={c['gap']}  (extraction: {pts['reason']})")
+    print(f"a posteriori certificate (to solver accuracy): certified={c['certified']} gap={c['gap']}  (extraction: {pts['reason']})")
     if c["x_hat"] is not None and n <= 12:
         print("x_hat =", np.round(c["x_hat"], 4), " sum =", round(float(c["x_hat"].sum()), 6))
 
