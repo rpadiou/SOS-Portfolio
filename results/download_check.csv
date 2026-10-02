@@ -1,0 +1,2 @@
+date,rows_old,rows_new,rows_common,cells,cells_above_1e-6,median_rel,max_rel
+2026-10-02,4173,4173,4173,154401,26,1.1321635668405594e-07,1.2881840565967959e-06
