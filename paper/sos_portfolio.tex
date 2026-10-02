@@ -21,7 +21,8 @@
 \begin{abstract}
 I ask whether a certified global minimiser of a degree-4 portfolio risk polynomial is worth having.
 I solve the order-2 Lasserre relaxation, dense and with correlative sparsity, and certify a point a posteriori when its value matches the bound, to solver accuracy.
-On \aN{} synthetic instances, one local start misses the global minimum in \aFailOne{} of the cases, and the relaxation certifies \aCert{} of them.
+On \aN{} synthetic instances, the probability that one local start misses the global minimum grows with the number of assets: in the default regime it is \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
+The relaxation certifies all but \aUncert{} of the instances, and only \aCalFiftyCert{} of the default-regime instances at $n=50$.
 On 37 US stocks (2015--2025), the certified minimiser lowers volatility and CVaR relative to equal weights, as any risk-minimising rule does.
 It is not better than Ledoit--Wolf minimum variance or minimum CVaR on those measures, and no net-return difference is distinguishable from zero.
 A Frobenius-ball formulation meant to protect against kurtosis estimation error does not beat the nominal problem, except marginally at the largest noise level; shrinkage towards a structured target does better.
@@ -43,7 +44,7 @@ I test a Frobenius-ball formulation for estimation error on the kurtosis coeffic
 
 Three results stand out.
 Local search fails more often than I expected, even on the default synthetic regime.
-With one start it misses the global minimum in \aFailOne{} of the instances, and in \aBigFailOne{} of those with $n\ge 30$ assets.
+In the default regime, one start misses the global minimum with probability \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
 The certificate is available in most cases, but its cost at $n=50$ exceeds that of 100 local runs.
 On real data the certified minimiser differs from the local one on few dates.
 It brings no out-of-sample gain over the risk-based baselines.
@@ -118,9 +119,9 @@ Expectation & Reason & Measurement & Verdict & Explanation\\
 \midrule
 Sparse bound equals dense bound & Theorem~7 of version 1 & Version 1: $\vOneSparse$ against $\vOneDense$ on one instance. After the budget fix, median dense minus sparse \aDDmed{}, but \aDDover{} of \aDDn{} instances exceed $10^{-3}$ (max \aDDmax) & Partly & Budget bug in version 1; remaining gaps are on instances the sparse relaxation does not certify\\
 2-asset benchmark is non-convex & Version 1 caption & Smallest Hessian eigenvalue on $K$: $+\tHess$; one minimum & Not held & The benchmark is convex; a non-convex instance has to be built (Sec.~\ref{sec:two})\\
-Local search is enough in the default regime & Protocol of Exp.~A & Several local minima in \aMultiCal{} of default-regime instances; one start fails with probability \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$ & Not held & The number of local minima grows with $n$; I did not test why\\
-Order-2 certificate in most cases & Tightness of low orders & \aCert{} certified in total; \aCalFiftyCert{} for the default regime at $n=50$ & Held, except at large $n$ & \aInacc{} solves return an inaccurate status\\
-Flat extension at $d=2$ certifies & Version 1 & Flat in \aFlat{} of instances; at $d=3$ on the non-convex pair the ranks are $\ncRankDThree$ and $\ncRankDThreePrev$ with the same bound & Unstable & The solver may return a point inside the optimal face; not tested\\
+Local search is enough in the default regime & Protocol of Exp.~A & Several local minima in \aMultiCalFifteen{} of default-regime instances at $n=15$ and \aMultiCalFifty{} at $n=50$; one start fails with probability \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$ & Not held & The number of local minima grows with $n$; I did not test why\\
+Order-2 certificate in most cases & Tightness of low orders & All but \aUncert{} of \aN{} instances certified; \aCalFiftyCert{} for the default regime at $n=50$ & Held, except at large $n$ & \aInacc{} solves return an inaccurate status\\
+Flat extension at $d=2$ certifies & Version 1 & Flat in all but \aNotFlat{} instances; at $d=3$ on the non-convex pair the ranks are $\ncRankDThree$ and $\ncRankDThreePrev$ with the same bound & Unstable & The solver may return a point inside the optimal face; not tested\\
 Size reduction of 398 at $n=50$ & Version 1 table & \cxPsdStar{} and \cxPsdChain{} (PSD entries), \cxMomStar{} and \cxMomChain{} (moments), for star and chain & Corrected & Version 1 compared two different metrics\\
 Dense SDP unaffordable at $n=50$ & ``$>60$ h'' in version 1 & Measured: \dbFifteenTime{} s and \dbFifteenMem{} GB at $n=15$. Extrapolated, not measured: \dbExtTimeFifty{} s at $n=50$ & Not tested & Extrapolation from five points\\
 SDP faster than local search & Cost of one solve & At $n=50$ in the default regime, \aTimeSosCal{} s against \aTimeLocCal{} s for 100 local runs & Not held & The sparse SDP still has blocks of size up to \cxBlockStar{}\\
@@ -154,14 +155,21 @@ A search with $K$ starts fails when its best value exceeds $f_{\mathrm{cert}}$ b
 In the default regime I expected local search to find the global minimum, and in the stress regime I expected failures.
 
 \emph{Observed.}
-Several local minima appear in \aMultiCal{}, \aMultiMix{} and \aMultiStr{} of the default, mixed and stress instances.
+The share of instances with several local minima grows with $n$.
+In the default regime it is \aMultiCalFour{} at $n=4$, \aMultiCalFifteen{} at $n=15$ and \aMultiCalFifty{} at $n=50$.
 
 The probability that one start fails grows with $n$ in all regimes (Table~\ref{tab:A}).
 In the default regime it is \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
 
 More starts help without closing the gap (Figure~\ref{fig:A}).
-Over all instances the best of one start fails in \aFailOne{} of the cases and the best of 100 in \aFailHundred{}.
-In the default regime at $n=50$, 100 starts still fail in \aCalFiftyFailHundred{} of the instances.
+In the default regime at $n=50$, the best of one start fails in \aFOneCalFifty{} of the instances and the best of 100 in \aFHundredCalFifty{}.
+
+\emph{Reference bias.}
+On an instance that is not certified, the reference is the best of 100 runs, so 100 starts cannot fail there by construction.
+This concerns \aUncert{} instances in total, but \aUncertCalFifty{} of the 50 default-regime instances at $n=50$.
+Among the certified ones the 100-start failure rate is \aFHundredCertCalFifty{}, not \aFHundredCalFifty{}.
+Table~\ref{tab:A} gives both rates by regime and $n$.
+Rates pooled over all instances depend on the design (eight sizes, three regimes, unequal numbers of seeds), so I do not report them.
 
 \emph{Reading.}
 The default regime is not an easy regime beyond about ten assets.
@@ -173,7 +181,7 @@ I did not test why local minima multiply with $n$.
 \end{figure}
 \input{tab_A.tex}
 
-The relaxation certifies \aCert{} of the \aN{} instances, but unevenly: \aCalFiftyCert{} in the default regime at $n=50$, and \aUncert{} instances in total are not certified.
+The relaxation certifies all but \aUncert{} of the \aN{} instances, but unevenly: \aCalFiftyCert{} in the default regime at $n=50$.
 \aInacc{} sparse solves return an inaccurate status.
 I also solved the dense relaxation on \aDDn{} instances.
 The difference $\lb^{\mathrm{dense}}-\lb^{\mathrm{sparse}}$ has median \aDDmed{}.

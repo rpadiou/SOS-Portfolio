@@ -50,6 +50,27 @@ def table(df):
     return pd.DataFrame(rows)
 
 
+def pct1(s):
+    return f"{100 * np.mean(s):.1f}%"
+
+
+def bias_table(df):
+    """Failure rates by regime and n, over all instances and over the certified ones only.
+
+    On an instance that is not certified the reference f_cert is the best of 100 local runs, so the
+    failure of 100 starts is false there by construction.
+    """
+    rows = []
+    for (reg, n), g in df.groupby(["regime", "n"]):
+        c = g[g["certified"].astype(bool)]
+        row = {"regime": reg, "n": n, "N": len(g), "ref = best of 100": pct1(~g["certified"].astype(bool))}
+        for K in Ks:
+            row[f"fail K={K} all"] = pct1(g[f"fail_K{K}"])
+            row[f"fail K={K} cert."] = pct1(c[f"fail_K{K}"]) if len(c) else "n/a"
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def md(t):
     cols = list(t.columns)
     return "\n".join(["| " + " | ".join(cols) + " |", "|" + "|".join("---" for _ in cols) + "|"] +
@@ -116,7 +137,13 @@ def main():
              f"no bound returned: {int(df['lb_sparse'].isna().sum())}.", "",
              "Definitions: see experiments/PROTOCOL.md. `certified` = a posteriori certificate at d=2; "
              "`fail K` = best of K local runs misses f_cert by more than tau; gap_rel = (UB_100 - lb)/max(|lb|, 1e-3).", "",
-             md(t), ""]
+             md(t), "",
+             "## Reference bias and rates by regime and n", "",
+             "The reference f_cert is the certified point when the instance is certified and the best of 100 local runs otherwise. "
+             "On the second kind of instance `fail K=100` is false by construction. `ref = best of 100` is the share of such instances; "
+             "`cert.` columns restrict to instances whose reference is the certified point. "
+             "Rates pooled over the whole design (8 sizes, 3 regimes, 50, 50 and 120 instances per cell) depend on the design and are not reported: read the rates by regime and n.", "",
+             md(bias_table(df)), ""]
     open(os.path.join(RES, "exp_a_summary.md"), "w").write("\n".join(lines))
     figures(df)
     print("\n".join(lines))

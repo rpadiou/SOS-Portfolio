@@ -18,8 +18,8 @@ def macros(path="paper/numbers.tex"):
 
 def table(m):
     rows = [
-        ("A, 1760 synthetic instances", "one local start misses the global minimum", f"{m['aFailOne']} (best of 100 starts: {m['aFailHundred']})"),
-        ("A", "order-2 relaxation certifies the optimum, to solver accuracy", f"{m['aCert']} (default regime, n=50: {m['aCalFiftyCert']})"),
+        ("A, 1760 synthetic instances", "probability that one local start misses the global optimum, default regime", f"{m['aPfCalFifteen']} at n=15, {m['aPfCalFifty']} at n=50"),
+        ("A", "order-2 relaxation certifies the optimum, to solver accuracy", f"all but {m['aUncert']} of {m['aN']} (default regime, n=50: {m['aCalFiftyCert']})"),
         ("A", "sparse SDP against 100 local runs, n=50, default regime", f"{m['aTimeSosCal']} s against {m['aTimeLocCal']} s"),
         ("size, n=50", "dense over sparse PSD entries (v1 claimed 398)", f"{m['cxPsdStar']} to {m['cxPsdChain']}"),
         ("B, kurtosis estimation error", "ball formulation against nominal, 10 assets", "worse for rho <= 0.2, 2 to 5% better at rho = 0.5 (gamma <= 0.1)"),

@@ -46,20 +46,21 @@ def sci_cell(x, d=1):
 # experiment A
 a = pd.read_csv(os.path.join(RES, "exp_a.csv"))
 put("aN", len(a))
-put("aCert", pct(a.certified.mean(), 1))
-put("aFlat", pct(a.flat.mean(), 1))
+put("aNotFlat", int((~a.flat.fillna(False).astype(bool)).sum()))
 put("aInacc", int(a.inaccurate_sparse.sum()))
 put("aUncert", int((~a.certified).sum()))
 a["multi"] = a.n_minima > 1
 for r, k in (("calibrated", "Cal"), ("mixed", "Mix"), ("stress", "Str")):
-    put("aMulti" + k, pct(a[a.regime == r].multi.mean()))
     g = a[a.regime == r]
     for n, w in ((2, "Two"), (4, "Four"), (10, "Ten"), (15, "Fifteen"), (30, "Thirty"), (50, "Fifty")):
         put(f"aPf{k}{w}", num(g[g.n == n].p_single_fail.mean()))
         put(f"aMulti{k}{w}", pct(g[g.n == n].multi.mean()))
-for k, w in ((1, "One"), (5, "Five"), (20, "Twenty"), (100, "Hundred")):
-    put("aFail" + w, pct(a[f"fail_K{k}"].mean(), 1 if k == 100 else 0))
-    put("aBigFail" + w, pct(a[a.n >= 30][f"fail_K{k}"].mean(), 1 if k == 100 else 0))
+        c = g[(g.n == n) & g.certified]
+        put(f"aFOne{k}{w}", pct(g[g.n == n].fail_K1.mean()))
+        put(f"aFHundred{k}{w}", pct(g[g.n == n].fail_K100.mean(), 1))
+        put(f"aFHundredCert{k}{w}", pct(c.fail_K100.mean(), 1))
+        put(f"aUncert{k}{w}", int((~g[g.n == n].certified).sum()))
+        put(f"aUncertShare{k}{w}", pct((~g[g.n == n].certified).mean()))
 put("aCalFiftyCert", pct(a[(a.regime == "calibrated") & (a.n == 50)].certified.mean()))
 dd = a.dd.dropna()
 put("aDDn", len(dd))
@@ -67,7 +68,6 @@ put("aDDmed", sci(dd.median()))
 put("aDDmax", sci(dd.max()))
 put("aDDover", int((dd > 1e-3).sum()))
 put("aDDmin", sci(dd.min()))
-put("aCalFiftyFailHundred", pct(a[(a.regime == "calibrated") & (a.n == 50)].fail_K100.mean()))
 put("aExcessMax", sci((a.lb_sparse - a.ub_K100).max()))
 for r, k in (("calibrated", "Cal"), ("stress", "Str")):
     g = a[(a.regime == r) & (a.n == 50)]
@@ -273,7 +273,7 @@ T = {}
 
 
 def table(caption, label, header, rows_, spec):
-    T[label.split(":")[1]] = ("\\begin{table}[" + ("!h" if label == "tab:E" else "t") + "]\n\\centering" + ("\\scriptsize" if label == "tab:E" else "\\small") + "\n\\caption{" + caption + "}\\label{" + label + "}\n"
+    T[label.split(":")[1]] = ("\\begin{table}[" + ("!h" if label == "tab:E" else "t") + "]\n\\centering" + ("\\scriptsize" if label in ("tab:E", "tab:A") else "\\small") + "\n\\caption{" + caption + "}\\label{" + label + "}\n"
              "\\begin{tabular}{" + spec + "}\n\\toprule\n" + header + " \\\\\n\\midrule\n"
              + " \\\\\n".join(rows_) + " \\\\\n\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
@@ -283,12 +283,16 @@ rowsA = []
 for r in ("calibrated", "mixed", "stress"):
     for n in (4, 10, 15, 30, 50):
         g = a[(a.regime == r) & (a.n == n)]
-        rowsA.append(f"{r} & {n} & {len(g)} & {pct(g.multi.mean())} & {num(g.p_single_fail.mean())} & {pct(g.fail_K20.mean())} & "
-                     f"{pct(g.fail_K100.mean())} & {pct(g.certified.mean())} & {g.t_sparse.median():.1f} & {g.t_local.median():.1f}")
+        c = g[g.certified]
+        rowsA.append(f"{r} & {n} & {len(g)} & {pct(g.multi.mean())} & {num(g.p_single_fail.mean())} & {pct(g.fail_K1.mean())} & "
+                     f"{pct(g.fail_K100.mean(), 1)} & {pct(c.fail_K100.mean(), 1)} & {pct((~g.certified).mean())} & "
+                     f"{g.t_sparse.median():.1f} & {g.t_local.median():.1f}")
 table("Experiment A, selected cells. Multi-min: share of instances with several distinct local minima among 100 runs; $p_1$: mean "
-      "probability that one start misses the reference optimum; fail $K$: share of instances where the best of $K$ starts misses it; "
-      "cert.: share certified a posteriori at $d=2$; times are medians of the sparse SDP and of 100 local runs, in seconds.",
-      "tab:A", "regime & $n$ & inst. & multi-min & $p_1$ & fail 20 & fail 100 & cert. & SDP (s) & 100 local (s)", rowsA, "lrrrrrrrrr")
+      "probability that one start misses the reference optimum; fail $K$: share of instances where the best of $K$ starts misses it "
+      "(``cert.'': among the instances whose reference is the certified point); uncert.: share of instances that are not certified at $d=2$, "
+      "where the reference is the best of 100 runs and the 100-start failure is false by construction; times are medians of the sparse SDP "
+      "and of 100 local runs, in seconds. The full grid is in \\texttt{results/exp\\_a\\_summary.md}.",
+      "tab:A", "regime & $n$ & inst. & multi-min & $p_1$ & fail 1 & fail 100 & fail 100 cert. & uncert. & SDP (s) & 100 local (s)", rowsA, "lrrrrrrrrrr")
 
 # Table B
 rowsB = []

@@ -24,8 +24,8 @@ Generated from `results/` by `scripts/make_readme_tables.py`. Details, intervals
 <!-- BEGIN:headline -->
 | experiment | measured | result |
 |---|---|---|
-| A, 1760 synthetic instances | one local start misses the global minimum | 45% (best of 100 starts: 0.5%) |
-| A | order-2 relaxation certifies the optimum, to solver accuracy | 98.4% (default regime, n=50: 74%) |
+| A, 1760 synthetic instances | probability that one local start misses the global optimum, default regime | 0.30 at n=15, 0.83 at n=50 |
+| A | order-2 relaxation certifies the optimum, to solver accuracy | all but 29 of 1760 (default regime, n=50: 74%) |
 | A | sparse SDP against 100 local runs, n=50, default regime | 80 s against 33 s |
 | size, n=50 | dense over sparse PSD entries (v1 claimed 398) | 128 to 215 |
 | B, kurtosis estimation error | ball formulation against nominal, 10 assets | worse for rho <= 0.2, 2 to 5% better at rho = 0.5 (gamma <= 0.1) |
@@ -39,6 +39,7 @@ Generated from `results/` by `scripts/make_readme_tables.py`. Details, intervals
 - Dense costs beyond n = 15 are extrapolated, not measured.
 - The SDP bound is only as accurate as the solver; it can exceed the objective at the optimum by about 1e-6 relative (paper, appendix B).
 - Experiment B uses drawn estimation errors on synthetic markets. Experiment C uses a fixed universe of current large caps (survivorship bias).
+- In experiment A, an instance that is not certified takes the best of 100 local runs as its reference, which understates the failure rate of 100 starts; the paper gives the rates by regime and n, with and without those instances.
 - The 13 comparisons of experiment C are not corrected for multiple testing.
 - Version 1 (tag `v1.0-paper`) had errors; they are listed in `docs/CLAIMS.md` and in the paper.
 
