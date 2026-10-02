@@ -75,3 +75,9 @@ The polynomial objective is estimated from 756 days of data; third and fourth sa
 (DeMiguel-Garlappi-Uppal 2009: estimated optimal rules rarely beat 1/N out of sample). The most likely result is
 that SOS-global = local (the model is close to convex in these windows), and that neither is distinguishable from the
 simple baselines on volatility/CVaR. That would be reported as is.
+
+## Wording note (2026-10-02, no change to any result)
+
+The cost is `c * sum_i |w_new,i - w_drift,i|`: it is charged on every unit traded, sells and buys both counted, so the reported
+turnover is that same sum (twice the amount bought) and `c` is a cost per unit of traded notional. "One-way" above is a
+loose description of the cost; the code is unchanged. The first rebalance carries no cost.
