@@ -33,11 +33,12 @@ def report(f, pr, n, b_lo, b_hi, solver, starts, robust=False):
     mins = analyze_local_minima(loc["results"])
     print(f"lower bound lambda_d = {lb:.8f}")
     print(f"local search: best f = {loc['f_opt']:.8f}  ({starts} starts, {mins['n_distinct_minima']} distinct KKT minima, {tl:.2f}s)")
-    print(f"gap (best local - lambda_d) = {loc['f_opt'] - lb:.3e}")
     if robust:
-        print("ball formulation: no a posteriori certificate (certify() assumes a polynomial objective); "
+        print("ball formulation: lambda_d bounds f + delta ||W z||, the local search above minimises f alone, so no gap is printed.")
+        print("no a posteriori certificate (certify() assumes a polynomial objective); "
               "the test would be f(x_hat) + delta ||W z(x_hat)|| - lambda <= eps, not implemented")
         return
+    print(f"gap (best local - lambda_d) = {loc['f_opt'] - lb:.3e}")
     ex = MinimizerExtractor(pr.relaxation, r["moments"], n)
     fl = ex.flatness()
     print(f"flat extension (rank tol {ex.rank_tol:g}): {fl['flat']}  "
