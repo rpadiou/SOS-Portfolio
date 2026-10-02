@@ -7,12 +7,12 @@ result lives, and its status (`verified`, `refuted`, `corrected`, `removed`,
 
 | ID | Claim (v1.0) | Source | Proof script | Result file | Status |
 |----|--------------|--------|--------------|-------------|--------|
-| E1 | The 2-asset benchmark is non-convex ("Hessian changes sign across K") | paper Sec. 2.2, Fig. 1 caption, README motivation | `scripts/reproduce_review_findings.py e1` | `results/review_findings_v1.json` | refuted (min Hessian eigenvalue on K = 1.6814 > 0; 1 local minimum); paper and README rewritten; a non-convex instance is in `results/two_asset_nonconvex.json` |
-| E2 | Default synthetic instances illustrate the value of global optimisation | README, paper Sec. 7 | `scripts/reproduce_review_findings.py e2` | same | refuted (sparse = dense = local, 1 local minimum on the 5 default instances); replaced by experiment A |
-| E3 | Sparse bound equals the dense bound (Thm. 7: lambda_sp = lambda_d) | paper Thm. 7, README, test `test_sparse_single_clique_matches_dense` | `scripts/reproduce_review_findings.py e3`; `tests/regression/test_e3_sparse_budget.py` | same | refuted (v1.0 sparse lb = -22.07 vs dense -2.43 on instance (6,2,0,skew 2)); cause: budget relaxed to E[sum x]; fixed with sector-sum variables, regression test `tests/regression/test_e3_sparse_budget.py` |
-| E4 | "398x reduction in SDP variables at n=50" | README, paper Tables 2-3, `main.py` | `scripts/reproduce_review_findings.py e4` | same | corrected, see `results/complexity.csv` (398.7x is a ratio of PSD-matrix entries; unique moments ratio is 252.8x; metrics inconsistent between rows) |
-| E5 | Dense SDP takes ">60 s" (n=15) and ">60 h" (n=50) | README, paper Table 3 | `scripts/reproduce_review_findings.py e5` | same | unsupported (v1.0 dense builder is scalar-loop based; values are not SDP timings); replaced by the measured dense baseline `results/dense_baseline.csv` and a labelled extrapolation |
-| E6 | n=50 default: CLARABEL certified in ~1.85 s; SCS (default) lb -0.006045, no flat extension | README, `main.py` | `scripts/reproduce_review_findings.py e6` | same | reproduced; CLARABEL is the default solver in v2 |
+| E1 | The 2-asset benchmark is non-convex ("Hessian changes sign across K") | paper Sec. 2.2, Fig. 1 caption, README motivation | `scripts/two_asset_benchmark.py` (current code); values measured on commit `3c0adca` | `results/review_findings_v1.json` | refuted (min Hessian eigenvalue on K = 1.6814 > 0; 1 local minimum); paper and README rewritten; a non-convex instance is in `results/two_asset_nonconvex.json` |
+| E2 | Default synthetic instances illustrate the value of global optimisation | README, paper Sec. 7 | values measured on commit `3c0adca` | same | refuted (sparse = dense = local, 1 local minimum on the 5 default instances); replaced by experiment A |
+| E3 | Sparse bound equals the dense bound (Thm. 7: lambda_sp = lambda_d) | paper Thm. 7, README, test `test_sparse_single_clique_matches_dense` | values measured on commit `3c0adca`; `tests/regression/test_e3_sparse_budget.py` | same | refuted (v1.0 sparse lb = -22.07 vs dense -2.43 on instance (6,2,0,skew 2)); cause: budget relaxed to E[sum x]; fixed with sector-sum variables, regression test `tests/regression/test_e3_sparse_budget.py` |
+| E4 | "398x reduction in SDP variables at n=50" | README, paper Tables 2-3, `main.py` | `scripts/complexity_table.py` (current code); values measured on commit `3c0adca` | same | corrected, see `results/complexity.csv` (398.7x is a ratio of PSD-matrix entries; unique moments ratio is 252.8x; metrics inconsistent between rows) |
+| E5 | Dense SDP takes ">60 s" (n=15) and ">60 h" (n=50) | README, paper Table 3 | values measured on commit `3c0adca` | same | unsupported (v1.0 dense builder is scalar-loop based; values are not SDP timings); replaced by the measured dense baseline `results/dense_baseline.csv` and a labelled extrapolation |
+| E6 | n=50 default: CLARABEL certified in ~1.85 s; SCS (default) lb -0.006045, no flat extension | README, `main.py` | values measured on commit `3c0adca` | same | reproduced; CLARABEL is the default solver in v2 |
 | E7 | "Mathematical correctness guaranteed by the 51-test suite" | paper Sec. 7.4 | — | — | removed (several tests assert only `isfinite`; none uses overlapping cliques); removed from README and paper |
 | E8a | Henrion-Lasserre extraction for r>1 | `extractor.py` docstring | — | — | refuted (random combination + non-orthogonal eig; atom merge by position); extraction rewritten (`tests/test_extractor.py`) |
 | E8b | Robust extension is "distributionally robust (Delage-Ye)" | README, paper Sec. 6 | — | — | refuted (Frobenius-ball on kappa; SOC applied to all degree-4 moments); renamed Frobenius-ball formulation in README, paper and docs |
@@ -20,6 +20,13 @@ result lives, and its status (`verified`, `refuted`, `corrected`, `removed`,
 | R1 | "a guarantee inaccessible to gradient-based methods" | README | — | — | removed (promotional); removed from README and paper |
 | R2 | "real-time rebalancing feasible" | paper Sec. 7.4 | — | — | removed; removed from README and paper |
 | R3 | Interpretation: 60.6/34.4 allocation driven by asymmetric kurtosis | paper Sec. 2.2 | — | — | interpretation removed from the paper; ablation in `results/two_asset.json` |
+
+The values of E1 to E6 in `results/review_findings_v1.json` were measured on commit `3c0adca`,
+which still contains the version 1 code path in the package layout and the script that
+printed them. That script imports classes of version 1 and does not run on `main`, so it
+is not kept there. To reproduce the values: `git worktree add ../v1-check 3c0adca`, then
+run `PYTHONPATH=src python scripts/reproduce_review_findings.py` from that worktree (it
+writes the JSON inside the worktree).
 
 Note on E5: in this environment the v1.0 dense n=10 instance solved in 10.4 s with
 status `optimal` (review: 11.6 s, `optimal_inaccurate`). All other numbers of E1-E6
