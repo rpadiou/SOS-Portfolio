@@ -2,5 +2,6 @@
  "n_returns": 4172,
  "first": "2009-06-02",
  "last": "2025-12-30",
- "median_pairwise_corr": 0.3760305303736545
+ "median_pairwise_corr": 0.3760305303736545,
+ "n_eval_returns": 2765
 }

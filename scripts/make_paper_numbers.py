@@ -43,6 +43,21 @@ def sci_cell(x, d=1):
     return sci(x, d) if abs(x) > 0 else "0"
 
 
+# experiment A: parameters of the regimes, from the configuration that generated the instances
+import yaml
+cfg = yaml.safe_load(open(os.path.join(ROOT, "experiments/configs/exp_a.yaml")))
+rg = cfg["regimes"]
+put("rgSkewDef", rg["calibrated"]["cells"][0]["skew_scale"])
+put("rgSkewMix", rg["mixed"]["cells"][0]["skew_scale"])
+put("rgKurt", rg["calibrated"]["cells"][0]["kurt_base"])
+put("rgImpDef", rg["calibrated"]["cells"][0]["impact_base"])
+put("rgImpStr", rg["stress"]["cells"][0]["impact_base"])
+put("rgSkewStrLo", min(c["skew_scale"] for c in rg["stress"]["cells"]))
+put("rgSkewStrHi", max(c["skew_scale"] for c in rg["stress"]["cells"]))
+put("rgKurtStrLo", min(c["kurt_base"] for c in rg["stress"]["cells"]))
+put("rgKurtStrHi", max(c["kurt_base"] for c in rg["stress"]["cells"]))
+put("rgStarts", cfg["n_local_starts"])
+
 # experiment A
 a = pd.read_csv(os.path.join(RES, "exp_a.csv"))
 put("aN", len(a))
@@ -54,6 +69,7 @@ for r, k in (("calibrated", "Cal"), ("mixed", "Mix"), ("stress", "Str")):
     g = a[a.regime == r]
     for n, w in ((2, "Two"), (4, "Four"), (10, "Ten"), (15, "Fifteen"), (30, "Thirty"), (50, "Fifty")):
         put(f"aPf{k}{w}", num(g[g.n == n].p_single_fail.mean()))
+        put(f"aPf{k}{w}Hundred", f"{100 * g[g.n == n].p_single_fail.mean():.0f}")
         put(f"aMulti{k}{w}", pct(g[g.n == n].multi.mean()))
         c = g[(g.n == n) & g.certified]
         put(f"aFOne{k}{w}", pct(g[g.n == n].fail_K1.mean()))
@@ -150,6 +166,7 @@ for mk, k in (("n10-mixed-s0", "Ten"), ("n6-mixed-s0", "Six")):
         for meth, w in (("nominal", "Nom"), ("robust_g0.1", "Rob"), ("rule_c1", "Rule"), ("shrink_s0.5", "Shr"), ("robust_g1.0", "Big")):
             put(f"b{k}{r}{w}", sci(breg(mk, rho, meth)))
 put("bRatioBigA", f"{breg('n10-mixed-s0', 0.05, 'robust_g1.0') / breg('n10-mixed-s0', 0.05, 'nominal'):.0f}")
+put("bRatioRobA", f"{breg('n10-mixed-s0', 0.05, 'robust_g0.1') / breg('n10-mixed-s0', 0.05, 'nominal'):.1f}")
 put("bRatioShrC", num(breg("n10-mixed-s0", 0.5, "shrink_s0.75") / breg("n10-mixed-s0", 0.5, "nominal")))
 put("bRatioRobC", num(breg("n10-mixed-s0", 0.5, "robust_g0.1") / breg("n10-mixed-s0", 0.5, "nominal")))
 for gm_, w in (("robust_g0.1", "GOne"), ("robust_g1.0", "GBig"), ("robust_g0.02", "GSmall"), ("robust_g0.5", "GHalf")):
@@ -210,6 +227,7 @@ put("cNetZero", int(((ct.netret_lo <= 0) & (ct.netret_hi >= 0)).sum()))
 put("cCvarZero", int(((ct.cvar_lo <= 0) & (ct.cvar_hi >= 0)).sum()))
 pmin = ct.sharpe_p.min()
 pmax = ct.sharpe_p.max()
+put("cExpectedChance", num(0.05 * len(ct), 2))
 put("cPMin", num(pmin))
 put("cPMax", num(pmax))
 
@@ -275,6 +293,63 @@ for pkg, k in (("cvxpy", "Cvxpy"), ("clarabel", "Clarabel"), ("numpy", "Numpy"),
 put("cpuModel", env["cpu"])
 put("cpuThreads", env["threads"])
 
+# local snapshot: moments of the 37 stocks, re-download check, toy example
+um = pd.read_csv(os.path.join(RES, "universe_moments.csv"))
+us = json.load(open(os.path.join(RES, "universe_summary.json")))
+put("uReturns", f"{us['n_returns']:,}".replace(",", "\\,"))
+put("uCorr", num(us["median_pairwise_corr"]))
+put("uVolMed", pct(um.ann_vol.median()))
+put("uVolMin", pct(um.ann_vol.min()))
+put("uVolMax", pct(um.ann_vol.max()))
+put("uSkewMed", num(um["skew"].median()))
+put("uSkewMin", num(um["skew"].min()))
+put("uSkewMax", num(um["skew"].max()))
+put("uSkewNeg", int((um["skew"] < 0).sum()))
+put("uKurtMed", f"{um["kurtosis"].median():.1f}")
+put("uKurtMin", f"{um["kurtosis"].min():.1f}")
+put("uKurtMax", f"{um["kurtosis"].max():.1f}")
+from math import comb
+put("uCoMom", f"{comb(len(um) + 3, 4):,}".replace(",", "\\,"))
+put("uObs", f"{756 * len(um):,}".replace(",", "\\,"))
+put("uEval", f"{us['n_eval_returns']:,}".replace(",", "\\,"))
+put("uTail", us["n_eval_returns"] // 20)
+put("uN", len(um))
+put("mTenVolEw", f"{100 * cm.loc[('U10', 'EW'), 'ann_vol']:.1f}")
+put("mTenVolOnePt", f"{1 / (100 * cm.loc[('U10', 'EW'), 'ann_vol']) * 100:.0f}")
+put("mTenNetEw", f"{100 * cm.loc[('U10', 'EW'), 'net_ret_5bp']:.1f}")
+dl = pd.read_csv(os.path.join(RES, "download_check.csv"))
+put("dlCells", f"{int(dl.cells.iloc[-1]):,}".replace(",", "\\,"))
+put("dlAbove", int(dl["cells_above_1e-6"].max()))
+put("dlMedian", sci(dl.median_rel.max()))
+put("dlMax", sci(dl.max_rel.max()))
+toy = json.load(open(os.path.join(RES, "toy_example.json")))
+put("toyVol", num(toy["ann_vol"], 3))
+put("toyCvar", num(toy["cvar5"], 3))
+put("toyVolPct", num(100 * toy["ann_vol"], 1))
+put("toyCvarPct", num(100 * toy["cvar5"], 1))
+put("toyDd", num(toy["max_drawdown"], 4))
+put("toySkew", num(toy["skew"], 2))
+put("toyRet", num(toy["ann_return_net"], 3))
+put("toySharpe", num(toy["sharpe_net"], 2))
+put("toyTurn", num(toy["mean_turnover"], 4))
+gt = np.array(toy["gross"])
+put("toyMeanG", num(100 * gt.mean(), 1))
+put("toyVarG", sci(gt.var(ddof=1), 1))
+put("toySdG", num(100 * gt.std(ddof=1), 2))
+put("toyQ", num(100 * np.quantile(gt, 0.05), 1))
+put("toyWorst", num(100 * gt.min(), 0))
+put("toyEffUneven", num(toy["eff_n_uneven"], 2))
+c37 = cm.loc["U37"]
+for col, k, d in (("ann_vol", "Vol", 100), ("cvar5", "Cvar", 100), ("max_drawdown", "Dd", 100), ("turnover", "Turn", 1), ("eff_N", "EffN", 1),
+                  ("net_ret_5bp", "Net", 100), ("sharpe_5bp", "Sharpe", 1)):
+    dec = 2 if col == "cvar5" else (2 if col in ("turnover", "sharpe_5bp") else 1)
+    put(f"m{k}Min", f"{d * c37[col].min():.{dec}f}")
+    put(f"m{k}Max", f"{d * c37[col].max():.{dec}f}")
+    put(f"m{k}Ew", f"{d * c37.loc['EW', col]:.{dec}f}")
+put("mNStrat", len(c37))
+put("mSkewMin", num(c37["skew"].min()))
+put("mSkewMax", num(c37["skew"].max()))
+
 # write macros
 with open(os.path.join(OUT, "numbers.tex"), "w") as fh:
     fh.write("% generated by scripts/make_paper_numbers.py; do not edit\n")
@@ -328,7 +403,7 @@ for u, names in (("U10", ["EW", "MinVar_LW", "ERC_LW", "HRP", "MinCVaR95", "Poly
         rowsC.append(f"{u} & {lab} & {100 * r.ann_vol:.1f} & {100 * r.cvar5:.2f} & {100 * r.max_drawdown:.0f} & {r.turnover:.2f} & "
                      f"{r.eff_N:.1f} & {100 * r.net_ret_5bp:.1f} & {r.sharpe_5bp:.2f}")
 table("Experiment C, out of sample 2015--2025 (%d monthly rebalances). Annualised volatility, daily 5\\%% CVaR, maximum drawdown (\\%%), "
-      "mean one-way turnover per rebalance, effective number of assets, annualised return net of 5 bp, Sharpe ratio net of 5 bp. "
+      "mean turnover per rebalance ($\\sum_i|w_i-w_i^{\\mathrm{drift}}|$, buys and sells counted), effective number of assets, annualised return net of 5 bp, Sharpe ratio net of 5 bp. "
       "$w_4=1$ for the polynomial models." % len(rows),
       "tab:C", "universe & strategy & vol (\\%) & CVaR (\\%) & MDD & turn. & $N_{\\mathrm{eff}}$ & net (\\%) & Sharpe", rowsC, "llrrrrrrr")
 
@@ -377,6 +452,14 @@ table("Re-solves of a fixed sample (seed 2026) with CLARABEL at $10^{-10}$ and S
       "Largest relative change of the bound, relative to $\\max(1,|\\mathrm{lb}|)$ in B and C and to $\\max(10^{-3},|\\mathrm{lb}|)$ in A. "
       "Flips: certification verdicts that change.", "tab:F",
       "exp. & cases & CLARABEL $10^{-10}$ & SCS $10^{-8}$ & verdict flips & other", rowsF, "rrrrrl")
+
+rowsG = []
+for k in range(5):
+    rowsG.append(minus(f"{k + 1} & " + " & ".join(f"{100 * x:.0f}" for x in toy["returns"][k]) + f" & {100 * toy['gross'][k]:.2f} & "
+                       f"{toy['turnover'][k]:.4f} & {100 * toy['net'][k]:.4f}"))
+table("Toy example: three assets, five days, equal weights rebalanced daily, cost 10 bp per unit traded. Returns and gross and net portfolio "
+      "returns in \\%; turnover is $\\sum_i|w_i-w_i^{\\mathrm{drift}}|$ before the rebalance.",
+      "tab:G", "day & A & B & C & gross & turnover & net", rowsG, "rrrrrrr")
 
 for k_, v_ in T.items():
     open(os.path.join(OUT, f"tab_{k_}.tex"), "w").write("% generated by scripts/make_paper_numbers.py; do not edit\n" + v_)

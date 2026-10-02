@@ -1,6 +1,7 @@
 """Skewness, kurtosis, volatility and correlation of the 37 stocks of the local snapshot.
 
-Daily log returns over the whole snapshot (the same returns as experiment C). Skewness is mean(z^3) and kurtosis
+Daily log returns over the whole snapshot (the same returns as experiment C); n_eval_returns counts those
+from the first rebalance date of the evaluation period, 2015-01-02. Skewness is mean(z^3) and kurtosis
 mean(z^4) with z = (r - mean) / std(ddof=1), as in empirical.performance. Writes results/universe_moments.csv and results/universe_summary.json.
 
     python scripts/describe_universe.py
@@ -19,6 +20,7 @@ if __name__ == "__main__":
     out.to_csv("results/universe_moments.csv", index=False)
     C = np.corrcoef(r.values, rowvar=False)
     summary = {"n_returns": len(r), "first": str(r.index[0].date()), "last": str(r.index[-1].date()),
-               "median_pairwise_corr": float(np.median(C[np.triu_indices(len(C), 1)]))}
+               "median_pairwise_corr": float(np.median(C[np.triu_indices(len(C), 1)])),
+               "n_eval_returns": int((r.index >= "2015-01-02").sum())}
     json.dump(summary, open("results/universe_summary.json", "w"), indent=1)
     print(summary, out.describe().round(2).to_string(), sep="\n")
