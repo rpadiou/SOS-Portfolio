@@ -1,8 +1,9 @@
 # SOS-Portfolio
 
-Global optimisation of a degree-4 portfolio risk polynomial with the Lasserre moment-SOS hierarchy,
-dense and with correlative sparsity, and an empirical check of what the resulting certificate is worth.
+Global optimisation of degree-4 polynomial portfolio risk with sparse Lasserre relaxations, and an empirical check of what the certificate buys.
 The write-up is in [paper/sos_portfolio.pdf](paper/sos_portfolio.pdf).
+
+Status: finished and frozen; no further development planned.
 
 ## What it is
 
@@ -10,7 +11,7 @@ The write-up is in [paper/sos_portfolio.pdf](paper/sos_portfolio.pdf).
 - An a posteriori certificate: a feasible point whose value is within a tolerance of the lower bound. The bound is the primal objective of the moment problem, so the certificate holds to solver accuracy.
 - A multi-start local solver, for comparison.
 - Three experiments: A (local search against the relaxation, synthetic), B (estimation error on kurtosis coefficients),
-  C (37 US stocks, walk-forward, 2015-2025).
+  C (37 US stocks, walk-forward, 2015-2025). The paper defines every indicator and baseline it uses.
 
 ## What it is not
 
@@ -42,13 +43,15 @@ Generated from `results/` by `scripts/make_readme_tables.py`. Details, intervals
 - In experiment A, an instance that is not certified takes the best of 100 local runs as its reference, which understates the failure rate of 100 starts; the paper gives the rates by regime and n, with and without those instances.
 - The 13 comparisons of experiment C are not corrected for multiple testing.
 - Version 1 (tag `v1.0-paper`) had errors; they are listed in `docs/CLAIMS.md` and in the paper.
+- `scripts/download_data.py` depends on Yahoo Finance and can stop working. More in `docs/LIMITATIONS.md`.
 
 ## Reproduce
 
 ```bash
-pip install -e ".[dev,data]"
+pip install -r requirements.lock && pip install --no-deps -e .   # Python 3.12, exact versions
 pytest                      # fast tests
 pytest -m slow              # bound soundness test (about a minute)
+python main.py --mode demo  # certifies the two-asset benchmark
 python main.py --mode sparse --n-assets 15 --n-clusters 3
 python experiments/exp_a_local_vs_global.py && python experiments/summarize_exp_a.py
 python experiments/exp_b_robust.py && python experiments/summarize_exp_b.py   # writes the 14 MB results/exp_b.jsonl (not versioned)
@@ -57,20 +60,16 @@ python scripts/make_paper_numbers.py && python paper/generate_figures.py && (cd 
 ```
 
 Experiment C needs `data/raw/prices.parquet`, which is not versioned; `data/manifest.json` records the file used (tickers, dates, SHA-256).
-A new download can give a different hash if Yahoo has revised the adjusted prices. Some prices then differ from the file used here, so the results of experiment C can change; the size of the change was not measured.
-Experiment C takes a few hours on six workers; the per-strategy times are in `results/exp_c_alloc.jsonl`.
+Experiment C is the longest run; Appendix D of the paper gives its time.
+
+<!-- BEGIN:download -->
+A new download can differ from the file used: in a re-download of 154,401 price cells, 26 differed by more than 1e-6 in relative terms (median 1.1e-7, largest 1.3e-6). The effect on the results of experiment C was not measured.
+<!-- END:download -->
 
 ## Layout
 
-```
-src/sos_portfolio/   polynomial ring, relaxations, indexing, chordal graphs, extraction, local solver, empirical model
-experiments/         protocols (written before the runs), experiment scripts, summarisers
-scripts/             complexity and dense-baseline measurements, data download, paper numbers
-results/             outputs used by the paper
-docs/                claims register, design decisions
-paper/               LaTeX source, generated numbers and tables, PDF
-tests/               unit, regression and slow soundness tests
-```
+`src/sos_portfolio/` library; `experiments/` protocols (written before the runs), scripts, summarisers; `scripts/` measurements and
+paper numbers; `results/` outputs used by the paper; `docs/` claims register, design decisions, limitations; `paper/` LaTeX, tables, PDF; `tests/`.
 
 ## References
 

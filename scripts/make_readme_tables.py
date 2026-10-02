@@ -1,10 +1,12 @@
-"""Fill the results table of README.md (between the BEGIN/END markers) from paper/numbers.tex.
+"""Fill the results table and the download note of README.md, and the download note of docs/LIMITATIONS.md (between the BEGIN/END markers)
+from paper/numbers.tex.
 
 Run scripts/make_paper_numbers.py first. Nothing in the README table is typed by hand.
 """
 import re
 
 MARK = re.compile(r"(<!-- BEGIN:headline -->).*?(<!-- END:headline -->)", re.S)
+MARK_DL = re.compile(r"(<!-- BEGIN:download -->).*?(<!-- END:download -->)", re.S)
 
 
 def macros(path="paper/numbers.tex"):
@@ -12,7 +14,7 @@ def macros(path="paper/numbers.tex"):
     for name, val in re.findall(r"\\newcommand\{\\(\w+)\}\{(.*)\}$", open(path).read(), re.M):
         val = re.sub(r"\\ensuremath\{-\}", "-", val)
         val = re.sub(r"\\ensuremath\{([\d.]+)\\times10\^\{(-?\d+)\}\}", r"\1e\2", val)
-        out[name] = val.replace("\\%", "%")
+        out[name] = val.replace("\\%", "%").replace("\\,", ",")
     return out
 
 
@@ -30,7 +32,17 @@ def table(m):
     return "\n".join(["| experiment | measured | result |", "|---|---|---|"] + [f"| {a} | {b} | {c} |" for a, b, c in rows])
 
 
+def download(m):
+    return (f"A new download can differ from the file used: in a re-download of {m['dlCells']} price cells, {m['dlAbove']} differed by more than 1e-6 "
+            f"in relative terms (median {m['dlMedian']}, largest {m['dlMax']}). The effect on the results of experiment C was not measured.")
+
+
 if __name__ == "__main__":
     readme = open("README.md").read()
-    body = table(macros())
-    open("README.md", "w").write(MARK.sub(lambda g: f"{g.group(1)}\n{body}\n{g.group(2)}", readme))
+    mac = macros()
+    body = table(mac)
+    readme = MARK.sub(lambda g: f"{g.group(1)}\n{body}\n{g.group(2)}", readme)
+    readme = MARK_DL.sub(lambda g: f"{g.group(1)}\n{download(mac)}\n{g.group(2)}", readme)
+    open("README.md", "w").write(readme)
+    lim = MARK_DL.sub(lambda g: f"{g.group(1)}\n{'- ' + download(mac)}\n{g.group(2)}", open("docs/LIMITATIONS.md").read())
+    open("docs/LIMITATIONS.md", "w").write(lim)
