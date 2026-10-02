@@ -6,6 +6,11 @@ f(x) = x' Sigma x + sum_i eta_i x_i^3 + sum_{i,j} kappa_ij x_i^2 x_j^2
 over K = {x >= 0, b_lo <= sum x <= b_hi}. The coefficients are those of a *model*:
 kappa is not the fourth co-moment tensor of a portfolio, and the synthetic markets
 below are not calibrated to data.
+
+The gamma terms (named `impact_*` in the code) are a stylised concentration penalty on the
+weights. They are quartic so that f has degree four, and they are larger on concentrated
+positions. They are not calibrated and not derived from an execution model; the identifiers
+keep the name `impact` for that reason only.
 """
 
 from __future__ import annotations

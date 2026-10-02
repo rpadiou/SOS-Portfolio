@@ -56,9 +56,12 @@ I fixed them before running any experiment below.
 \section{Risk model}
 The synthetic objective is
 \begin{equation}
-f(x)=x^\top\Sigma x+\sum_i\eta_i x_i^3+\sum_{i,j}\kappa_{ij}\,x_i^2x_j^2+\text{impact terms},
+f(x)=x^\top\Sigma x+\sum_i\eta_i x_i^3+\sum_{i,j}\kappa_{ij}\,x_i^2x_j^2+\text{concentration terms},
 \end{equation}
 on $K=\{x\ge 0,\ b_{\mathrm{lo}}\le \mathbf 1^\top x\le b_{\mathrm{hi}}\}$ with $b_{\mathrm{lo}}=0.95$ and $b_{\mathrm{hi}}=1$.
+The last terms are a stylised concentration penalty on the weights.
+They are quartic so that $f$ has degree four and they are larger on concentrated positions.
+They are not calibrated and not derived from an execution model.
 The coefficients $\kappa_{ij}$ are model parameters.
 They are not the fourth co-moment tensor of a portfolio, which would be a dense contraction $\sum\kappa_{ijkl}x_ix_jx_kx_l$.
 Cross terms exist only within clusters, so the interaction graph is block-structured.

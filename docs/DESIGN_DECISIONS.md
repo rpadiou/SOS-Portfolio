@@ -87,7 +87,9 @@ certificate filters by feasibility and objective.
 
 ## Risk model and its limits
 
-`f(x) = x'Sigma x + sum eta_i x_i^3 + kappa-terms + impact`. It has no return term,
+`f(x) = x'Sigma x + sum eta_i x_i^3 + kappa-terms + concentration penalty`. The last term
+(`impact_*` in the code) is a stylised penalty on the weights, quartic so that `f` has degree four;
+it is not calibrated and not derived from an execution model. The model has no return term,
 the kappa-terms are `sum kappa_ij x_i^2 x_j^2`, which is *not* the fourth moment of a
 portfolio return (that is a dense tensor contraction `sum kappa_ijkl x_i x_j x_k x_l`),
 and the markets are synthetic. The sparsity is a modelling choice (cross terms only
