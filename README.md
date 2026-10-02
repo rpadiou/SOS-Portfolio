@@ -57,7 +57,7 @@ python scripts/make_paper_numbers.py && python paper/generate_figures.py && (cd 
 ```
 
 Experiment C needs `data/raw/prices.parquet`, which is not versioned; `data/manifest.json` records the file used (tickers, dates, SHA-256).
-A new download can give a different hash if Yahoo has revised the adjusted prices, and the results of experiment C can then differ slightly.
+A new download can give a different hash if Yahoo has revised the adjusted prices. Some prices then differ from the file used here, so the results of experiment C can change; the size of the change was not measured.
 Experiment C takes a few hours on six workers; the per-strategy times are in `results/exp_c_alloc.jsonl`.
 
 ## Layout
