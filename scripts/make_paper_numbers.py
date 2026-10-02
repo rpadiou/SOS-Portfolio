@@ -438,7 +438,8 @@ for _, r in ct.iterrows():
                  f"{100 * r.d_netret:+.1f} [{100 * r.netret_lo:+.1f}, {100 * r.netret_hi:+.1f}] & {r.sharpe_p:.2f}"))
 table("Experiment C, all %d pairwise comparisons, difference A minus B in percentage points (annualised volatility; daily 5\\%% CVaR; "
       "annualised net return at 5 bp) with 95\\%% circular-block bootstrap intervals (blocks of 21 days), and the p-value of the "
-      "Ledoit--Wolf Sharpe-ratio test. No multiple-comparison correction; the intervals are descriptive." % len(ct),
+      "Ledoit--Wolf Sharpe-ratio test. No multiple-comparison correction; the intervals are descriptive. On U10 the two solutions of the full model "
+      "coincide on every date, so the row ``SOS full'' against ``local full'' compares two identical series and its $p$-value is numerical noise." % len(ct),
       "tab:E", "U & A & B & vol & CVaR & net return & $p$", rowsE, "lllllll")
 
 

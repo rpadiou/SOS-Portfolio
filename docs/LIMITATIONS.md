@@ -18,6 +18,7 @@ Numbers are not repeated here; each point names its source (`results/`, the pape
 - **Dense costs.** Dense timings and memory beyond `n = 15` are extrapolations (`results/dense_extrapolation.csv`).
 - **Reference bias.** In Experiment A an instance that is not certified takes the best of 100 local runs as its reference, so 100 starts cannot fail there by construction (X-D4).
 - **Statistics.** The comparisons of Experiment C are not corrected for multiple testing; one period, one universe, survivorship bias.
+- **A degenerate comparison.** On U10 the SOS and local solutions coincide on every date, so their return series are identical and the Sharpe test of that pair has no meaning. Its p-value is numerical noise: in a check on a re-download it was the only one of the 13 that moved.
 - **Estimation and model error are not separated.** The explanation that moment estimation error hides the benefit of the certified minimiser is a hypothesis, not a measurement.
 - **Naming.** The default regime of Experiment A is called `calibrated` in the code and tables; nothing is calibrated to data. Turnover is the sum of absolute weight changes, buys and sells both counted, and costs are charged on that sum.
 
