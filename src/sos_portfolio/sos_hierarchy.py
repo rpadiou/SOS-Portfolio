@@ -25,6 +25,7 @@ cliques {s_k, p_{k-1}, p_k} of size 3 instead of one clique of size K.
 from __future__ import annotations
 
 import time
+import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -32,6 +33,7 @@ import cvxpy as cp
 import numpy as np
 import scipy.sparse as sp
 
+from .graph_sparsity import clique_tree, verify_rip
 from .indexer import SparseIndexer
 from .polynomial_ring import MultivariatePolynomial, linear_poly
 
@@ -286,8 +288,20 @@ def build_portfolio_relaxation(
     Both use the same constraints on x: x_i >= 0, x_upper - x_i >= 0 (if upper_bounds; x_upper=1 by default),
     budget, and optionally per-clique balls |I_k| - sum_{I_k} x_i^2 >= 0 (`ball`;
     implied by the box constraints under the Archimedean property, so off by default).
-    Every sparse constraint is implied by the dense ones at the same order, hence
-    lb_sparse <= lb_dense when ball=False.
+    With ball=False, lb_sparse <= lb_dense at equal order, for the star and the chain budget.
+    Proof sketch: take a dense moment vector y and define the moments of the auxiliary variables
+    by substituting s_k = sum_{i in O_k} x_i (and p_k = s_1 + ... + s_k) in each monomial. Every
+    sparse moment block is then a principal submatrix of the dense moment matrix, or a congruence
+    T M T' of it (the blocks in s and p). Every sparse localising block is a principal submatrix,
+    a congruence, or a sum of dense localising blocks (b_hi - s_k = (b_hi - sum x) + sum of the
+    other x_j). The equalities hold by construction and the objective is unchanged.
+    tests/regression/test_sparse_lifting.py checks this numerically. With ball=True the
+    inequality is not claimed.
+
+    The cliques must admit a running intersection ordering for the sparse hierarchy to converge
+    as the order grows; the relaxation is valid without it, and a warning is raised if it fails.
+    Disjoint cliques (clusters) keep it with the star budget. With overlapping cliques the budget
+    clique closes a cycle with them, so it fails and the warning is raised.
     """
     if delta_robust is not None:  # alias kept for v1 callers
         kappa_radius = delta_robust
@@ -351,6 +365,9 @@ def build_portfolio_relaxation(
             extra.append(sorted({s_id[k], p_id[k]} | ({p_id[prev]} if prev is not None else set())))
             prev = k
     cl = J + extra
+    if not verify_rip(clique_tree(cl)[0]):
+        warnings.warn("the cliques do not admit a running intersection ordering: the relaxation is valid, "
+                      "but the convergence of the sparse hierarchy is not guaranteed", stacklevel=2)
     seen_c = set()
 
     def once(key, fn):

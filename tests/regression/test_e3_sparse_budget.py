@@ -34,6 +34,8 @@ def test_sparse_matches_dense_and_local_on_e3_instances(case, ref):
     assert sp <= ub + 1e-6 and de <= ub + 1e-6
 
 
+# With overlapping cliques the budget clique closes a cycle: the relaxation is valid, the RIP warning is expected.
+@pytest.mark.filterwarnings("ignore:the cliques do not admit")
 @pytest.mark.parametrize("kind,n,seed", [("chain", 7, 0), ("chain", 7, 1), ("star", 6, 0), ("random", 8, 2),
                                          ("random", 8, 5), ("chain", 5, 3)])
 def test_overlapping_cliques_sparse_is_valid_relaxation_of_dense(kind, n, seed):
