@@ -107,7 +107,9 @@ A point $\hat x$ is certified when $f(\hat x)-\lb\le\max(10^{-6},10^{-4}|\lb|)$.
 Since $\lb\le f^\star\le f(\hat x)$, this holds whatever the rank of the moment matrix.
 The reported bound is the primal objective of the moment problem, not the dual objective, so the statement holds to solver accuracy (Appendix~\ref{app:acc}).
 The flat-extension test of Curto and Fialkow \cite{curto2005} is reported as a secondary diagnostic.
-Solves use CLARABEL \cite{clarabel2024} through CVXPY \cite{cvxpy2016} with tolerance $10^{-7}$.
+Solves use CLARABEL \cite{clarabel2024} through CVXPY \cite{cvxpy2016}.
+I set its three tolerances (gap absolute, gap relative, feasibility) to $10^{-7}$; its defaults are $10^{-8}$.
+The status \texttt{optimal\_inaccurate} means that only its reduced tolerances were met (gap $5\times10^{-5}$, feasibility $10^{-4}$).
 The bound is only as accurate as the solver; Appendix~\ref{app:acc} measures the accuracy.
 
 \section{Expectations and measurements}

@@ -71,12 +71,16 @@ that contains the objective, and the dense SDP at `d = 3` is already too large f
 
 ## Solver
 
-CLARABEL is the default: interior point, accurate to ~1e-8, handles PSD and SOC
-cones and exposes status and iteration counts. Tolerances are set to 1e-7 (the
-default 1e-8 stalls just above the threshold on rank-deficient optima).
-`optimal_inaccurate` is reported as `inaccurate=True`, never as success. SCS is
-available but first-order (accuracy ~1e-4..1e-6), so rank decisions are not
-trustworthy with it.
+CLARABEL is the default: interior point, handles PSD and SOC cones, reports status and
+iteration counts. The code sets three tolerances, `tol_gap_abs`, `tol_gap_rel` and `tol_feas`,
+to 1e-7 unless the caller passes others (`MomentRelaxation.solve`); CLARABEL's own default is
+1e-8 for each. Every other setting keeps CLARABEL's default, including the reduced tolerances
+(gap 5e-5, feasibility 1e-4) at which the solver reports `AlmostSolved`, which CVXPY maps to
+`optimal_inaccurate`. The reason recorded for 1e-7 is that 1e-8 stalls just above the threshold
+on rank-deficient optima; it was not re-measured here. `optimal_inaccurate` is reported as
+`inaccurate=True`, never as success. SCS is available with `eps=1e-6` and `max_iters=100000` by
+default in the code; it is first-order (accuracy of the order of 1e-4 to 1e-6, recorded and not
+re-measured), so rank decisions are not trustworthy with it.
 
 ## Certificates and the rank rule
 
