@@ -2,7 +2,7 @@
 
     python scripts/two_asset_nonconvex.py && python paper/generate_figures.py
 
-Fig. 1  non-convex 2-asset stress instance: f on K and its local minima
+Fig. 1  non-convex 2-asset stress instance: f on X (the feasible set) and its local minima
 The experiment figures used in the paper are written to results/figures/ by the summarisers and copied here.
 """
 import json
@@ -51,7 +51,7 @@ def fig1(d, f):
     for m in d["local_minima"]:
         b.plot(*m["x"], "o", color=RED, mec="white", ms=7)
     b.set_xlabel("$x_1$"); b.set_ylabel("$x_2$"); b.set_aspect("equal")
-    b.set_title("(b) $f$ on $[0,1]^2$; $K$ is the strip between the white lines", fontsize=9)
+    b.set_title(r"(b) $f$ on $[0,1]^2$; $\mathcal{X}$ is the strip between the white lines", fontsize=9)
     fig.colorbar(c, ax=b, shrink=0.8)
     fig.tight_layout(); fig.savefig(os.path.join(HERE, "fig_risk_surface.png"), dpi=170); plt.close(fig)
 

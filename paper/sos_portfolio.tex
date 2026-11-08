@@ -21,8 +21,8 @@
 \begin{abstract}
 I ask whether a certified global minimiser of a degree-4 portfolio risk polynomial is worth having.
 I solve the order-2 Lasserre relaxation, dense and with correlative sparsity, and certify a point a posteriori when its value matches the bound, to solver accuracy.
-On \aN{} synthetic instances, the probability that one local start misses the global minimum grows with the number of assets: in the default regime it is \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
-The relaxation certifies all but \aUncert{} of the instances, and only \aCalFiftyCert{} of the default-regime instances at $n=50$.
+On \aN{} synthetic instances, the probability that one local start misses the global minimum grows with the number of assets: in the default regime it is \aPfDefFifteen{} at $n=15$ and \aPfDefFifty{} at $n=50$.
+The relaxation certifies all but \aUncert{} of the instances, and only \aDefFiftyCert{} of the default-regime instances at $n=50$.
 On 37 US stocks (2015--2025), the certified minimiser lowers volatility and CVaR relative to equal weights, as any risk-minimising rule does.
 It is not better than Ledoit--Wolf minimum variance or minimum CVaR on those measures, and no net-return difference is distinguishable from zero.
 A Frobenius-ball formulation meant to protect against kurtosis estimation error does not beat the nominal problem, except marginally at the largest noise level; shrinkage towards a structured target does better.
@@ -44,7 +44,7 @@ I test a Frobenius-ball formulation for estimation error on the kurtosis coeffic
 
 Three results stand out.
 Local search fails more often than I expected, even on the default synthetic regime.
-In the default regime, one start misses the global minimum with probability \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
+In the default regime, one start misses the global minimum with probability \aPfDefFifteen{} at $n=15$ and \aPfDefFifty{} at $n=50$.
 The certificate is available in most cases, but its cost at $n=50$ exceeds that of 100 local runs.
 On real data the certified minimiser differs from the local one on few dates.
 It brings no out-of-sample gain over the risk-based baselines.
@@ -114,8 +114,9 @@ Symbol & Financial meaning & Mathematical meaning\\
 \midrule
 $n$, $x$ & number of assets; portfolio weights & number of variables; point of $\R^n$\\
 $r_t$, $\Sigma$ & daily asset returns; their covariance & vector in $\R^n$; positive semidefinite matrix\\
-$f$, $f^\star$ & risk to minimise; lowest risk attainable & polynomial of degree four; its global minimum on $K$\\
-$K$ & admissible portfolios (long-only, budget); also the number of local starts in Experiment~A & polyhedron $\{x\ge0,\ b_{\mathrm{lo}}\le\mathbf 1^\top x\le b_{\mathrm{hi}}\}$\\
+$f$, $f^\star$ & risk to minimise; lowest risk attainable & polynomial of degree four; its global minimum on $\mathcal{X}$\\
+$\mathcal{X}$ & admissible portfolios (long-only, budget) & polyhedron $\{x\ge0,\ b_{\mathrm{lo}}\le\mathbf 1^\top x\le b_{\mathrm{hi}}\}$\\
+$K$ & number of local starts in Experiment~A & number of random SLSQP starts, from 1 to 100\\
 $b_{\mathrm{lo}}$, $b_{\mathrm{hi}}$ & least and greatest invested share (synthetic markets) & bounds on $\mathbf 1^\top x$\\
 $\eta_i$, $\kappa_{ij}$ & skewness-like and kurtosis-like coefficients of the synthetic model & coefficients of $x_i^3$ and $x_i^2x_j^2$; not co-moments\\
 $d$, $y_\alpha$ & --- & relaxation order; variable standing for the monomial $x^\alpha$\\
@@ -138,7 +139,7 @@ The synthetic objective is
 \begin{equation}
 f(x)=x^\top\Sigma x+\sum_i\eta_i x_i^3+\sum_{i,j}\kappa_{ij}\,x_i^2x_j^2+\text{concentration terms},
 \end{equation}
-on $K=\{x\ge 0,\ b_{\mathrm{lo}}\le \mathbf 1^\top x\le b_{\mathrm{hi}}\}$ with $b_{\mathrm{lo}}=0.95$ and $b_{\mathrm{hi}}=1$.
+on $\mathcal{X}=\{x\ge 0,\ b_{\mathrm{lo}}\le \mathbf 1^\top x\le b_{\mathrm{hi}}\}$ with $b_{\mathrm{lo}}=0.95$ and $b_{\mathrm{hi}}=1$.
 The coefficients $\eta_i$ play the part of skewness and the $\kappa_{ij}$ that of kurtosis.
 The last terms are a stylised concentration penalty on the weights.
 They are quartic so that $f$ has degree four and they are larger on concentrated positions.
@@ -205,13 +206,13 @@ Each line is detailed in the section indicated.
 Expectation & Reason & Measurement & Verdict & Explanation\\
 \midrule
 Sparse bound equals dense bound & Theorem~7 of version 1 & Version 1: $\vOneSparse$ against $\vOneDense$ on one instance. After the budget fix, median dense minus sparse \aDDmed{}, but \aDDover{} of \aDDn{} instances exceed $10^{-3}$ (max \aDDmax) & Partly & Budget bug in version 1; remaining gaps are on instances the sparse relaxation does not certify\\
-2-asset benchmark is non-convex & Version 1 caption & Smallest Hessian eigenvalue on $K$: $+\tHess$; one minimum & Not held & The benchmark is convex; a non-convex instance has to be built (Sec.~\ref{sec:two})\\
-Local search is enough in the default regime & Protocol of Exp.~A & Several local minima in \aMultiCalFifteen{} of default-regime instances at $n=15$ and \aMultiCalFifty{} at $n=50$; one start fails with probability \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$ & Not held & The number of local minima grows with $n$; I did not test why\\
-Order-2 certificate in most cases & Tightness of low orders & All but \aUncert{} of \aN{} instances certified; \aCalFiftyCert{} for the default regime at $n=50$ & Held, except at large $n$ & \aInacc{} solves return an inaccurate status\\
+2-asset benchmark is non-convex & Version 1 caption & Smallest Hessian eigenvalue on $\mathcal{X}$: $+\tHess$; one minimum & Not held & The benchmark is convex; a non-convex instance has to be built (Sec.~\ref{sec:two})\\
+Local search is enough in the default regime & Protocol of Exp.~A & Several local minima in \aMultiDefFifteen{} of default-regime instances at $n=15$ and \aMultiDefFifty{} at $n=50$; one start fails with probability \aPfDefFifteen{} at $n=15$ and \aPfDefFifty{} at $n=50$ & Not held & The number of local minima grows with $n$; I did not test why\\
+Order-2 certificate in most cases & Tightness of low orders & All but \aUncert{} of \aN{} instances certified; \aDefFiftyCert{} for the default regime at $n=50$ & Held, except at large $n$ & \aInacc{} solves return an inaccurate status\\
 Flat extension at $d=2$ certifies & Version 1 & Flat in all but \aNotFlat{} instances; at $d=3$ on the non-convex pair the ranks are $\ncRankDThree$ and $\ncRankDThreePrev$ with the same bound & Unstable & The solver may return a point inside the optimal face; not tested\\
 Size reduction of 398 at $n=50$ & Version 1 table & \cxPsdStar{} and \cxPsdChain{} (PSD entries), \cxMomStar{} and \cxMomChain{} (moments), for star and chain & Corrected & Version 1 counted moment-matrix entries only\\
 Dense SDP unaffordable at $n=50$ & ``$>60$ h'' in version 1 & Measured: \dbFifteenTime{} s and \dbFifteenMem{} GB at $n=15$. Extrapolated, not measured: \dbExtTimeFifty{} s at $n=50$ & Not tested & Extrapolation from five points\\
-SDP faster than local search & Cost of one solve & At $n=50$ in the default regime, \aTimeSosCal{} s against \aTimeLocCal{} s for 100 local runs & Not held & The sparse SDP still has blocks of size up to \cxBlockStar{}\\
+SDP faster than local search & Cost of one solve & At $n=50$ in the default regime, \aTimeSosDef{} s against \aTimeLocDef{} s for 100 local runs & Not held & The sparse SDP still has blocks of size up to \cxBlockStar{}\\
 Ball formulation helps under kurtosis error & Experiment~B design & Worse than nominal for $\rho\le0.2$; 5\% better at $\rho=0.5$ with $\gamma=0.1$ & Not held & The ball adds a bias proportional to $\delta$; not otherwise tested\\
 Certified minimiser better out of sample & Motivation & Net-return intervals contain zero in all \cTests{} comparisons; volatility and CVaR are above those of minimum variance and minimum CVaR & Not held & Moment estimation error, not separated from model error; Sec.~\ref{sec:C}\\
 \bottomrule
@@ -220,7 +221,7 @@ Certified minimiser better out of sample & Motivation & Net-return intervals con
 
 \section{Experiments}
 \subsection{A two-asset check}\label{sec:two}
-The 2-asset benchmark of version 1 has a positive definite Hessian on $K$ (smallest eigenvalue $\tHess$) and a single local minimum.
+The 2-asset benchmark of version 1 has a positive definite Hessian on $\mathcal{X}$ (smallest eigenvalue $\tHess$) and a single local minimum.
 It validates the code but illustrates nothing about local minima.
 I built a non-convex instance by raising the skewness scale until a multi-start run finds two minima (smallest Hessian eigenvalue $\ncHess$).
 The best local minimum has value $\ncBestLocal$ and the other $\ncWorstLocal$; \ncShare{} of the local starts end in the worse one.
@@ -229,13 +230,13 @@ At $d=3$ the bound is the same to $10^{-8}$, but the rank test fails (ranks $\nc
 So the certificate is available at $d=2$ even though the rank test, applied at a higher order, would reject it.
 \begin{figure}[t]
 \centering\includegraphics[width=0.95\textwidth]{fig_risk_surface.png}
-\caption{Non-convex 2-asset instance. (a) $f$ along the two budget boundaries; dots are the local minima with the share of starts that reach them. (b) $f$ on the unit square; $K$ is the strip between the white lines.}
+\caption{Non-convex 2-asset instance. (a) $f$ along the two budget boundaries; dots are the local minima with the share of starts that reach them. (b) $f$ on the unit square; $\mathcal{X}$ is the strip between the white lines.}
 \end{figure}
 
 \subsection{Experiment A: local search against the relaxation}
 I generate \aN{} instances with $n\in\{2,4,6,8,10,15,30,50\}$ assets in three regimes, 50 to 120 per cell.
 A regime fixes the scale of the three families of coefficients of the risk model.
-In the default regime (named ``calibrated'' in the code and the tables, although nothing is calibrated to data) the skewness scale is \rgSkewDef{}, the kurtosis scale \rgKurt{} and the concentration scale \rgImpDef{}.
+In the default regime the skewness scale is \rgSkewDef{}, the kurtosis scale \rgKurt{} and the concentration scale \rgImpDef{}.
 The mixed regime raises the skewness scale to \rgSkewMix{}.
 The stress regime uses skewness scales from \rgSkewStrLo{} to \rgSkewStrHi{}, kurtosis scales from \rgKurtStrLo{} to \rgKurtStrHi{} and concentration scale \rgImpStr{}.
 For each instance I solve the sparse relaxation at $d=2$ (the dense one for $n\le10$) and run 100 SLSQP starts drawn i.i.d.\ on the budget set.
@@ -247,21 +248,21 @@ In the default regime I expected local search to find the global minimum, and in
 
 \emph{Observed.}
 The share of instances with several local minima grows with $n$.
-In the default regime it is \aMultiCalFour{} at $n=4$, \aMultiCalFifteen{} at $n=15$ and \aMultiCalFifty{} at $n=50$.
+In the default regime it is \aMultiDefFour{} at $n=4$, \aMultiDefFifteen{} at $n=15$ and \aMultiDefFifty{} at $n=50$.
 
 The probability that one start fails grows with $n$ in all regimes (Table~\ref{tab:A}).
-In the default regime it is \aPfCalFifteen{} at $n=15$ and \aPfCalFifty{} at $n=50$.
+In the default regime it is \aPfDefFifteen{} at $n=15$ and \aPfDefFifty{} at $n=50$.
 A start fails when it ends above the reference optimum by more than $\max(10^{-6},10^{-4}|f_{\mathrm{cert}}|)$.
-Read \aPfCalFifty{} as: of 100 random starts, about \aPfCalFiftyHundred{} end in a worse point (the mean over the 50 instances of that cell).
+Read \aPfDefFifty{} as: of 100 random starts, about \aPfDefFiftyHundred{} end in a worse point (the mean over the 50 instances of that cell).
 Lower is better; 0 means that every start finds the optimum.
 
 More starts help without closing the gap (Figure~\ref{fig:A}).
-In the default regime at $n=50$, the best of one start fails in \aFOneCalFifty{} of the instances and the best of 100 in \aFHundredCalFifty{}.
+In the default regime at $n=50$, the best of one start fails in \aFOneDefFifty{} of the instances and the best of 100 in \aFHundredDefFifty{}.
 
 \emph{Reference bias.}
 On an instance that is not certified, the reference is the best of 100 runs, so 100 starts cannot fail there by construction.
-This concerns \aUncert{} instances in total, but \aUncertCalFifty{} of the 50 default-regime instances at $n=50$.
-Among the certified ones the 100-start failure rate is \aFHundredCertCalFifty{}, not \aFHundredCalFifty{}.
+This concerns \aUncert{} instances in total, but \aUncertDefFifty{} of the 50 default-regime instances at $n=50$.
+Among the certified ones the 100-start failure rate is \aFHundredCertDefFifty{}, not \aFHundredDefFifty{}.
 Table~\ref{tab:A} gives both rates by regime and $n$.
 Rates pooled over all instances depend on the design (eight sizes, three regimes, unequal numbers of seeds), so I do not report them.
 
@@ -275,7 +276,7 @@ I did not test why local minima multiply with $n$.
 \end{figure}
 \input{tab_A.tex}
 
-The relaxation certifies all but \aUncert{} of the \aN{} instances, but unevenly: \aCalFiftyCert{} in the default regime at $n=50$.
+The relaxation certifies all but \aUncert{} of the \aN{} instances, but unevenly: \aDefFiftyCert{} in the default regime at $n=50$.
 Certified means that a feasible point has a value within $\max(10^{-6},10^{-4}|\lb|)$ of the bound, to solver accuracy (Appendix~\ref{app:voc}).
 \aInacc{} sparse solves return an inaccurate status.
 I also solved the dense relaxation on \aDDn{} instances.
@@ -289,7 +290,7 @@ The smallest difference is \aDDmin{}, which I take to be solver accuracy.
 Across all instances, the sparse bound exceeds the best local value by at most \aExcessMax{}, again the order of the solver tolerance.
 
 On time, the sparse relaxation is not cheaper than local search at the largest size.
-At $n=50$ the median solve takes \aTimeSosCal{} s in the default regime against \aTimeLocCal{} s for 100 local runs, and \aTimeSosStr{} s against \aTimeLocStr{} s in the stress regime.
+At $n=50$ the median solve takes \aTimeSosDef{} s in the default regime against \aTimeLocDef{} s for 100 local runs, and \aTimeSosStr{} s against \aTimeLocStr{} s in the stress regime.
 These are wall times from six concurrent workers and are indicative only.
 
 \subsection{Size and cost of the relaxation}
@@ -306,7 +307,7 @@ Take $n=50$ with ten cliques of five assets.
 The total number of PSD entries falls by a factor of \cxPsdStar{} (star budget) to \cxPsdChain{} (chain).
 The number of free moments falls by \cxMomStar{} to \cxMomChain{}.
 For one instance (seed 0, default parameters, ten cliques of five assets) run alone, the sparse solve takes \cxTimeChain{} s (chain) or \cxTimeStar{} s (star).
-In Experiment~A the median at $n=50$ in the default regime is \aTimeSosCal{} s (star budget, six concurrent workers, build included).
+In Experiment~A the median at $n=50$ in the default regime is \aTimeSosDef{} s (star budget, six concurrent workers, build included).
 
 Version 1 reported 398, which is $\vDenseEntries/\vSparseEntries$: the entries of the dense moment matrix over the entries of the ten clique moment matrices.
 It counted no localising matrix and no budget clique, since it did not impose the budget pointwise.
@@ -419,7 +420,7 @@ I did not separate it from model error.
 \input{tab_C.tex}
 \begin{figure}[t]
 \centering\includegraphics[width=\textwidth]{exp_c_cumulative.png}
-\caption{Experiment C. Cumulative log-return net of 5 bp for selected strategies, U10 (left) and U37 (right).}\label{fig:C}
+\caption{Experiment C. Cumulative sum of daily net simple returns, after costs of 5 bp, for selected strategies, U10 (left) and U37 (right). The sum is not compounded.}\label{fig:C}
 \end{figure}
 
 \section{Discussion and limits}
@@ -443,7 +444,8 @@ Explanations I did not test: why local minima multiply with $n$, why shrinkage b
 The synthetic polynomial has no return term and a simplified kurtosis structure, so Experiments~A and~B describe this family only.
 
 \medskip\noindent\emph{Note on tools.}
-Parts of the code and the text were written with an AI assistant.
+The idea, the model and the link between higher-moment portfolio risk and polynomial optimisation are mine.
+The code was written with an AI assistant, the search for results was AI-assisted, and the text is partly handwritten and partly AI-generated.
 I reviewed the results, ran an audit of the claims, and corrected the errors it found (Appendix~\ref{app:v1} and \texttt{docs/CLAIMS.md}).
 
 \bibliographystyle{plain}
@@ -460,7 +462,7 @@ The register \texttt{docs/CLAIMS.md} gives the script and result file behind eac
 \toprule
 Claim in version 1 & Measured & Status\\
 \midrule
-2-asset benchmark is non-convex & Smallest Hessian eigenvalue on $K$: $+\tHess$; one local minimum & Refuted\\
+2-asset benchmark is non-convex & Smallest Hessian eigenvalue on $\mathcal{X}$: $+\tHess$; one local minimum & Refuted\\
 Default instances show the value of global search & Sparse bound, dense bound and local value coincide on the five default instances; one local minimum each & Refuted\\
 Sparse bound equals dense bound & Instance $(6,2,0)$, skew 2: $\vOneSparse$ against $\vOneDense$; instance $(6,2,1)$, skew 4: $\vTwoSparse$ against $\vTwoDense$. Cause: budget imposed on $E[\sum x]$ & Refuted, fixed\\
 398-fold reduction at $n=50$ & $\vRatioPsd=\vDenseEntries/\vSparseEntries$ compares the entries of the dense moment matrix with those of the ten clique moment matrices, without localising matrices or budget clique; free moments give $\vRatioMom$; the row $n=15$ mixed matrix entries with free moments & Corrected\\
@@ -545,7 +547,7 @@ Net return & $252\,\overline{n_t}$; $n_t=g_t-c\sum_i|x_i-w_i|$ on a rebalance da
 Sharpe ratio & $\sqrt{252}\,\bar n/\mathrm{sd}(n)$; risk-free rate zero & none; higher & \mSharpeMin{}--\mSharpeMax{} & ignores the return on cash; one noisy estimate\\
 Effective number of assets & $1/\sum_ix_i^2$, mean over rebalances & between 1 and $n$; higher is more spread & \mEffNMin{}--\mEffNMax{} & looks at weights, not correlations\\
 Regret (Exp.~B) & $f(\hat x;\kappa)-f(x^\star;\kappa)$ & units of $f$, $\ge0$; lower & \bTenANom{} for nominal, 10 assets, $\rho=0.05$ & depends on the scale of $f$; compare ratios\\
-Single-start failure (Exp.~A) & share of the \rgStarts{} local runs ending more than $\tau$ above the reference & probability; lower & \aPfCalFifteen{} at $n=15$ (default regime) & depends on how starts are drawn\\
+Single-start failure (Exp.~A) & share of the \rgStarts{} local runs ending more than $\tau$ above the reference & probability; lower & \aPfDefFifteen{} at $n=15$ (default regime) & depends on how starts are drawn\\
 \bottomrule
 \end{tabular}
 \end{table}
