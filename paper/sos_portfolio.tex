@@ -362,6 +362,10 @@ I did not test this explanation, and the markets are synthetic.
 \subsection{Experiment C: real data}\label{sec:C}
 The data are Yahoo Finance adjusted closes for 37 large US stocks in 9 sectors of the GICS classification, 2009--2025, fixed ex post.
 The list is today's large caps, so stocks that fell out of the index are absent: this is survivorship bias, and it flatters every strategy.
+It inflates the level of every return and Sharpe ratio, which should therefore not be read at face value.
+Because all strategies see the same data, I expect it to matter less for the differences between them, and not at all for the comparison between the certified and the local minimiser of the same objective.
+It can still favour strategies that put more weight on stocks that did well, in a direction I cannot determine.
+I did not measure it: that would need the index constituents as they were at each date, which I do not have.
 The study is walk-forward.
 On the first trading day of each month from 2015 to 2025 (\cDates{} dates) each strategy estimates its inputs on the previous 756 trading days, about three years, and sets weights.
 The weights then drift until the next date.
