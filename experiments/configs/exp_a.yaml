@@ -13,7 +13,7 @@ sizes:
   30: 6
   50: 10
 regimes:
-  calibrated: {seeds: 50, cells: [{skew_scale: 0.3, kurt_base: 0.5, impact_base: 0.15}]}
+  default: {seeds: 50, cells: [{skew_scale: 0.3, kurt_base: 0.5, impact_base: 0.15}]}
   mixed:      {seeds: 50, cells: [{skew_scale: 1.0, kurt_base: 0.5, impact_base: 0.15}]}
   stress:     {seeds: 20, cells: [
     {skew_scale: 1.0, kurt_base: 0.3, impact_base: 0.05}, {skew_scale: 1.0, kurt_base: 0.5, impact_base: 0.05},

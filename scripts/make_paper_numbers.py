@@ -47,10 +47,10 @@ def sci_cell(x, d=1):
 import yaml
 cfg = yaml.safe_load(open(os.path.join(ROOT, "experiments/configs/exp_a.yaml")))
 rg = cfg["regimes"]
-put("rgSkewDef", rg["calibrated"]["cells"][0]["skew_scale"])
+put("rgSkewDef", rg["default"]["cells"][0]["skew_scale"])
 put("rgSkewMix", rg["mixed"]["cells"][0]["skew_scale"])
-put("rgKurt", rg["calibrated"]["cells"][0]["kurt_base"])
-put("rgImpDef", rg["calibrated"]["cells"][0]["impact_base"])
+put("rgKurt", rg["default"]["cells"][0]["kurt_base"])
+put("rgImpDef", rg["default"]["cells"][0]["impact_base"])
 put("rgImpStr", rg["stress"]["cells"][0]["impact_base"])
 put("rgSkewStrLo", min(c["skew_scale"] for c in rg["stress"]["cells"]))
 put("rgSkewStrHi", max(c["skew_scale"] for c in rg["stress"]["cells"]))
@@ -65,7 +65,7 @@ put("aNotFlat", int((~a.flat.fillna(False).astype(bool)).sum()))
 put("aInacc", int(a.inaccurate_sparse.sum()))
 put("aUncert", int((~a.certified).sum()))
 a["multi"] = a.n_minima > 1
-for r, k in (("calibrated", "Cal"), ("mixed", "Mix"), ("stress", "Str")):
+for r, k in (("default", "Def"), ("mixed", "Mix"), ("stress", "Str")):
     g = a[a.regime == r]
     for n, w in ((2, "Two"), (4, "Four"), (10, "Ten"), (15, "Fifteen"), (30, "Thirty"), (50, "Fifty")):
         put(f"aPf{k}{w}", num(g[g.n == n].p_single_fail.mean()))
@@ -77,7 +77,7 @@ for r, k in (("calibrated", "Cal"), ("mixed", "Mix"), ("stress", "Str")):
         put(f"aFHundredCert{k}{w}", pct(c.fail_K100.mean(), 1))
         put(f"aUncert{k}{w}", int((~g[g.n == n].certified).sum()))
         put(f"aUncertShare{k}{w}", pct((~g[g.n == n].certified).mean()))
-put("aCalFiftyCert", pct(a[(a.regime == "calibrated") & (a.n == 50)].certified.mean()))
+put("aDefFiftyCert", pct(a[(a.regime == "default") & (a.n == 50)].certified.mean()))
 dd = a.dd.dropna()
 put("aDDn", len(dd))
 put("aDDmed", sci(dd.median()))
@@ -85,7 +85,7 @@ put("aDDmax", sci(dd.max()))
 put("aDDover", int((dd > 1e-3).sum()))
 put("aDDmin", sci(dd.min()))
 put("aExcessMax", sci((a.lb_sparse - a.ub_K100).max()))
-for r, k in (("calibrated", "Cal"), ("stress", "Str")):
+for r, k in (("default", "Def"), ("stress", "Str")):
     g = a[(a.regime == r) & (a.n == 50)]
     put("aTimeSos" + k, f"{g.t_sparse.median():.0f}")
     put("aTimeLoc" + k, f"{g.t_local.median():.0f}")
@@ -369,7 +369,7 @@ def table(caption, label, header, rows_, spec):
 
 # Table A
 rowsA = []
-for r in ("calibrated", "mixed", "stress"):
+for r in ("default", "mixed", "stress"):
     for n in (4, 10, 15, 30, 50):
         g = a[(a.regime == r) & (a.n == n)]
         c = g[g.certified]

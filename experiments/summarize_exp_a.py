@@ -14,7 +14,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "results")
-COL = {"calibrated": "#0072B2", "mixed": "#E69F00", "stress": "#D55E00"}   # Okabe-Ito
+COL = {"default": "#0072B2", "mixed": "#E69F00", "stress": "#D55E00"}   # Okabe-Ito
 Ks = [1, 5, 20, 100]
 
 

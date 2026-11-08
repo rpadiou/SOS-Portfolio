@@ -20,9 +20,9 @@ def macros(path="paper/numbers.tex"):
 
 def table(m):
     rows = [
-        ("A, 1760 synthetic instances", "probability that one local start misses the global optimum, default regime", f"{m['aPfCalFifteen']} at n=15, {m['aPfCalFifty']} at n=50"),
-        ("A", "order-2 relaxation certifies the optimum, to solver accuracy", f"all but {m['aUncert']} of {m['aN']} (default regime, n=50: {m['aCalFiftyCert']})"),
-        ("A", "sparse SDP against 100 local runs, n=50, default regime (median of 50 instances, six concurrent workers)", f"{m['aTimeSosCal']} s against {m['aTimeLocCal']} s"),
+        ("A, 1760 synthetic instances", "probability that one local start misses the global optimum, default regime", f"{m['aPfDefFifteen']} at n=15, {m['aPfDefFifty']} at n=50"),
+        ("A", "order-2 relaxation certifies the optimum, to solver accuracy", f"all but {m['aUncert']} of {m['aN']} (default regime, n=50: {m['aDefFiftyCert']})"),
+        ("A", "sparse SDP against 100 local runs, n=50, default regime (median of 50 instances, six concurrent workers)", f"{m['aTimeSosDef']} s against {m['aTimeLocDef']} s"),
         ("size, n=50", "dense over sparse PSD entries (v1 claimed 398)", f"{m['cxPsdStar']} to {m['cxPsdChain']}"),
         ("B, kurtosis estimation error", "ball formulation against nominal, 10 assets", "worse for rho <= 0.2, 2 to 5% better at rho = 0.5 (gamma <= 0.1)"),
         ("B", "shrinkage at rho = 0.5, regret over nominal", m["bRatioShrC"]),

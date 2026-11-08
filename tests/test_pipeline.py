@@ -19,7 +19,7 @@ def pipeline(m):
     return r, ub, ex.flatness(), cert
 
 
-def test_full_pipeline_n15_calibrated():
+def test_full_pipeline_n15_default():
     r, ub, fl, cert = pipeline(SyntheticMarket.generate(15, 3, 0))
     assert r["status"] == "optimal"
     assert r["lower_bound"] <= ub["f_opt"] + 1e-6

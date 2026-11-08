@@ -18,6 +18,18 @@ import pandas as pd
 from sos_portfolio import empirical as em
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _legend(name):
+    """Readable legend for a strategy id; ids stay unchanged in tables and results."""
+    fixed = {"EW": "Equal weights (EW)", "MinVar_LW": "Min. variance, Ledoit-Wolf", "HRP": "Hierarchical risk parity (HRP)"}
+    if name in fixed:
+        return fixed[name]
+    parts = name.split("_")
+    if parts[0] == "Poly" and len(parts) == 4:
+        model, solver, w4 = parts[1], parts[2], parts[3].replace("w4=", "w4 = ")
+        return f"Polynomial, {model} model, {'SOS' if solver == 'SOS' else solver}, {w4}"
+    return name
+
+
 RES = os.path.join(ROOT, "results")
 COSTS = (5e-4, 10e-4)
 U10 = ["AAPL", "MSFT", "JNJ", "PFE", "JPM", "BAC", "PG", "KO", "HD", "MCD"]
@@ -150,7 +162,7 @@ def main():
     for ax, U in zip(axes, ("U10", "U37")):
         for (u, n), (g, n5, n10) in series.items():
             if u == U and (n in ("EW", "MinVar_LW", "HRP") or (n.endswith("w4=1") and ("SOS" in n or "full_local" in n))):
-                ax.plot(dates[: len(n5)], np.cumsum(n5), lw=1, label=n)
+                ax.plot(dates[: len(n5)], np.cumsum(n5), lw=1, label=_legend(n))
         ax.set_title(U, fontsize=9); ax.legend(fontsize=6, frameon=False); ax.spines[["top", "right"]].set_visible(False)
         ax.set_ylabel("cumulative sum of daily net returns (5 bp)")
     fig.tight_layout(); fig.savefig(os.path.join(RES, "figures/exp_c_cumulative.png"), dpi=150); plt.close(fig)

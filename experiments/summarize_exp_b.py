@@ -15,6 +15,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "results")
 
 
+def _market_title(market):
+    """'n10-mixed-s0' -> '10 assets, mixed regime, seed 0' (internal ids stay in file names)."""
+    import re
+    m = re.fullmatch(r"n(\d+)-(\w+)-s(\d+)", market)
+    return f"{m.group(1)} assets, {m.group(2)} regime, seed {m.group(3)}" if m else market
+
+
 def load():
     rows = [json.loads(l) for l in open(os.path.join(RES, "exp_b.jsonl"))]
     df = pd.DataFrame(rows).drop(columns=["x"])
@@ -74,13 +81,13 @@ def main():
             ax.axhline(nom, color="#666666", ls="--", label="nominal")
             for c, col in [(1, "#D55E00"), (2, "#E69F00")]:
                 h = g[g.method == f"rule_c{c}"]
-                ax.plot(h["delta"].mean(), h["regret"].mean(), "D", color=col, label=f"rule c={c}")
+                ax.plot(h["delta"].mean(), h["regret"].mean(), "D", color=col, label=f"automatic rule (c={c})")
             sh = g[g.method.str.startswith("shrink")].groupby("method")["regret"].mean()
             ax.axhline(sh.min(), color="#009E73", ls=":", label="best shrinkage")
-            ax.set_title(f"rho = {rho}", fontsize=9); ax.set_xlabel("delta"); ax.set_xscale("log"); ax.set_yscale("log", nonpositive="clip")
+            ax.set_title(f"\u03c1 = {rho}", fontsize=9); ax.set_xlabel("\u03b4 (radius of the ball)"); ax.set_xscale("log"); ax.set_yscale("log", nonpositive="clip")
             ax.spines[["top", "right"]].set_visible(False)
         axes[0].set_ylabel("mean true regret"); axes[-1].legend(fontsize=6, frameon=False)
-        fig.suptitle(market, fontsize=9); fig.tight_layout()
+        fig.suptitle(_market_title(market), fontsize=9); fig.tight_layout()
         fig.savefig(os.path.join(RES, f"figures/exp_b_regret_{market}.png"), dpi=150); plt.close(fig)
     print("\n".join(out)[:3000])
 

@@ -11,12 +11,12 @@ budget `0.95 <= sum x <= 1`, long-only. Synthetic and uncalibrated in every regi
 
 | regime | skew_scale | kurt_base | impact_base | notes |
 |---|---|---|---|---|
-| `calibrated` | 0.3 | 0.5 | 0.15 | generator defaults |
+| `default` | 0.3 | 0.5 | 0.15 | generator defaults |
 | `mixed` | 1.0 | 0.5 | 0.15 | moderately skewed |
 | `stress` | {1, 2, 4} | {0.3, 0.5} | 0.05 | 6 sub-cells, strong skewness, low kurtosis |
 
 `n` and clusters: n=2 (1), 4 (2), 6 (2), 8 (2), 10 (2), 15 (3), 30 (6), 50 (10).
-Seeds: 0-49 per cell (`calibrated`, `mixed`); `stress` uses seeds 0-19 per sub-cell (6 x 20 = 120
+Seeds: 0-49 per cell (`default`, `mixed`); `stress` uses seeds 0-19 per sub-cell (6 x 20 = 120
 instances per n) to bound run time. Reductions are declared in `results/meta.json`.
 
 ## Methods
@@ -39,7 +39,7 @@ instances per n) to bound run time. Reductions are declared in `results/meta.jso
 * Single-start failure probability: fraction of the 100 runs with `f_run - f_cert > tau`
   (infeasible runs count as failures).
 * Relative gap: `(UB_100 - lb) / max(|lb|, 1e-3)`; absolute gap also reported (1e-3 is the order
-  of magnitude of |f*| in the calibrated regime at n=50).
+  of magnitude of |f*| in the default regime at n=50).
 * Sparse vs dense: `lb_dense - lb_sparse` (>= 0 up to solver accuracy, see tests).
 * Times: wall seconds of the relaxation (build + solve) and of the 100 local runs, measured
   inside worker processes (6 concurrent workers, CLARABEL single-threaded): indicative only.
